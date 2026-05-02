@@ -18,7 +18,7 @@ Want to feel the difference between every haptic type — or test your own custo
 
 **Haptic Feedback Tryout** is a companion app that lets you tap through all available feedback types and compose your own patterns interactively using the `o O . - =` notation.
 
-[Download on the App Store](https://apps.apple.com/us/app/haptic-feedback-tryout/id6760615313) — iOS available now, Android coming soon.
+[Download on the App Store](https://apps.apple.com/us/app/haptic-feedback-tryout/id6760615313) · [Get it on Google Play](https://play.google.com/store/apps/details?id=com.hapticfeedbackexample)
 
 ---
 

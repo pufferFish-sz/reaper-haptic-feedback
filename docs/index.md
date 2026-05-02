@@ -16,6 +16,9 @@ hero:
       text: Try on iOS
       link: https://apps.apple.com/us/app/haptic-feedback-tryout/id6760615313
     - theme: alt
+      text: Try on Android
+      link: https://play.google.com/store/apps/details?id=com.hapticfeedbackexample
+    - theme: alt
       text: View on GitHub
       link: https://github.com/mkuczera/react-native-haptic-feedback
 
@@ -46,7 +49,7 @@ features:
 
   - icon: 📱
     title: Tryout App
-    details: Test every haptic type on a real device. Available now on iOS — Android coming soon.
+    details: Test every haptic type on a real device. Available now on iOS and Android.
     link: https://apps.apple.com/us/app/haptic-feedback-tryout/id6760615313
     linkText: Download on the App Store
 ---
