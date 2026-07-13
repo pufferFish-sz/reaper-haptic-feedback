@@ -23,8 +23,13 @@ ReaScript → pick `ReaperHaptics_Export.lua` → assign a keyboard shortcut
 (no shortcut needed — run it from the action list when you want to change
 the output folder; first export prompts for it automatically).
 
-Authoring model — one media item per haptic event on a track named `HAPTICS`
-(empty items: Insert → Empty item):
+Authoring model — one media item per haptic event on a track named `HAPTICS`.
+Build items from
+[`scripts/reaper/reference-sine.wav`](scripts/reaper/reference-sine.wav)
+(full-scale 200 Hz mono, loops seamlessly): insert it once, then
+copy/trim/stretch — items keep a volume handle **and** the pattern is audible
+in REAPER. Empty items work too, but they have no volume handle — write
+`i=0.6` in the item note instead (defaults to 1.0).
 
 | Item property                    | Haptic meaning                          |
 | -------------------------------- | --------------------------------------- |
@@ -32,6 +37,7 @@ Authoring model — one media item per haptic event on a track named `HAPTICS`
 | length < 150 ms                  | `HapticTransient`                       |
 | length ≥ 150 ms                  | `HapticContinuous` (duration = length)  |
 | item volume × take volume        | intensity 0–1 (1.0 = 0 dB, clamped)     |
+| `i=0.6` in take name / item note | intensity override (wins over volume)   |
 | `s=0.7` in take name / item note | sharpness override (default: intensity) |
 | `type=t` / `type=c` in name/note | force transient / continuous            |
 

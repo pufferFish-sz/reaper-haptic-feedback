@@ -7,6 +7,10 @@ Authoring model ("items-as-rectangles"):
   * item position                  -> event start time
   * item length                    -> transient (short) or continuous (long)
   * item volume x take volume      -> intensity 0..1  (1.0 = 0 dB = full)
+    Use items made from reference-sine.wav (same folder) so the volume
+    handle exists and the pattern is audible in REAPER. Empty items have
+    no volume handle: give them "i=0.6" instead (defaults to 1.0).
+  * "i=0.6" in take name/item note -> intensity override (wins over volume)
   * "s=0.7" in take name/item note -> sharpness override (default: = intensity)
   * "type=t" / "type=c"            -> force transient / continuous
 
@@ -90,11 +94,19 @@ local function collect_events(track, warnings)
     local len = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
     if (not has_sel) or (pos >= sel_start and pos < sel_end) then
       local label = label_of(item)
-      local vol = volume_of(item)
-      local intensity = clamp01(vol)
-      if vol > 1.001 then
-        warnings[#warnings + 1] = string.format(
-          "item @%.3fs: volume %.2f (> 0 dB) clamped to intensity 1.0", pos, vol)
+      local intensity
+      -- explicit "i=0.6" wins (the only handle empty items have); otherwise
+      -- item x take volume against the full-scale reference sine.
+      local i_override = label:match("[iI]%s*=%s*([%d%.]+)")
+      if i_override then
+        intensity = clamp01(tonumber(i_override) or 1)
+      else
+        local vol = volume_of(item)
+        intensity = clamp01(vol)
+        if vol > 1.001 then
+          warnings[#warnings + 1] = string.format(
+            "item @%.3fs: volume %.2f (> 0 dB) clamped to intensity 1.0", pos, vol)
+        end
       end
 
       local sharpness = intensity
