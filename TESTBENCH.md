@@ -38,15 +38,25 @@ three sample files in `example/ios/HapticFeedbackExample/haptics/` all pass.
 `playAHAP` only reads from the app bundle → rebuild per change. The bench tab
 instead loads AHAP JSON at runtime and converts it to `triggerPattern`:
 
-1. On the Windows/REAPER machine, serve the export folder:
+1. On the Windows/REAPER machine, serve the export folder. Easiest: copy
+   [`scripts/serve-haptics.bat`](scripts/serve-haptics.bat) into the folder
+   and double-click it (or drag the folder onto it) — it finds python,
+   starts the server and prints the exact URL to type on the phone.
+   Manual equivalent:
 
    ```powershell
    cd D:\path\to\reaper\haptics-export
    python -m http.server 8765
    ```
 
+   Every designer runs this in **their own** export folder on their own
+   machine — nothing is shared or fixed. Team convention: always export the
+   pattern currently being auditioned as **`preview.ahap`**, so each phone's
+   URL never changes after the first setup.
+
 2. Phone and PC on the same LAN. In the app's **REAPER Bench** tab, enter
-   `http://<pc-ip>:8765/my-effect.ahap` (find the IP with `ipconfig`).
+   `http://<pc-ip>:8765/preview.ahap` (the bat prints this; the app
+   remembers it).
 3. Tap **Fetch & Play**, or enable **Watch** — the app polls every second and
    automatically re-validates + replays whenever REAPER re-exports the file.
 4. The report card shows errors/warnings and a timeline (blue ticks =
