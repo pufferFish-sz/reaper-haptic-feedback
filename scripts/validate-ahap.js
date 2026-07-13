@@ -8,7 +8,8 @@
  *
  * Checks JSON validity against the library's AhapType definitions and
  * reports out-of-range values (times, intensity/sharpness outside 0-1,
- * transients closer than ~100 ms). Files whose parsed root is an array are
+ * transients closer than the perceivable minimum spacing, ~20 ms). Files
+ * whose parsed root is an array are
  * treated as HapticEvent[] payloads (times in milliseconds).
  *
  * The validation logic lives in src/utils/ahap.ts (single source of truth,

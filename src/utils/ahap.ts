@@ -30,9 +30,12 @@ import type { AhapType, HapticEvent } from "../types";
 
 /**
  * Minimum spacing between transient events (ms) for the hardware to render
- * them as distinct pulses. Matches `TRANSIENT_DURATION_MS` in pattern.ts.
+ * them as distinct pulses. Empirical floor from device testing: ~23 ms gaps
+ * are still perceivable as separate pulses, so warn only below 20 ms.
+ * (Apple's often-quoted 100 ms guidance is conservative; `pattern()`'s
+ * 100 ms notation spacing is unrelated upstream behavior.)
  */
-export const MIN_TRANSIENT_SPACING_MS = 100;
+export const MIN_TRANSIENT_SPACING_MS = 20;
 
 /** Core Haptics rejects continuous events longer than 30 seconds. */
 export const MAX_CONTINUOUS_DURATION_S = 30;

@@ -34,7 +34,10 @@ in the console.
 
 local TRACK_NAME = "HAPTICS"
 local TRANSIENT_MAX_LEN = 0.15 -- items shorter than this (s) become transients
-local MIN_TRANSIENT_GAP = 0.100 -- s, hardware floor for distinct pulses
+-- Empirical floor from device testing: ~23 ms gaps are still perceivable as
+-- distinct pulses, so only warn below 20 ms. (Apple's 100 ms guidance is
+-- conservative.)
+local MIN_TRANSIENT_GAP = 0.020 -- s
 local MAX_CONTINUOUS = 30.0 -- s, Core Haptics limit
 local EXT_SECTION = "ReaperHaptics"
 local EXT_KEY_DIR = "export_dir"
@@ -52,8 +55,8 @@ local function get_export_dir()
   local current = reaper.GetExtState(EXT_SECTION, EXT_KEY_DIR)
   if current == "" then current = reaper.GetProjectPath("") end
   local ok, csv = reaper.GetUserInputs(
-    "ReaperHaptics: confirm export folder", 1,
-    "Folder for preview.ahap:,extrawidth=260", current)
+    "ReaperHaptics: 确认导出文件夹", 1,
+    "preview.ahap 导出到:,extrawidth=260", current)
   if not ok or csv == "" then return nil end
   reaper.SetExtState(EXT_SECTION, EXT_KEY_DIR, csv, true)
   return csv
@@ -108,7 +111,7 @@ local function collect_events(track, warnings)
         intensity = clamp01(vol)
         if vol > 1.001 then
           warnings[#warnings + 1] = string.format(
-            "item @%.3fs: volume %.2f (> 0 dB) clamped to intensity 1.0", pos, vol)
+            "item @%.3fs: 音量 %.2f 超过 0 dB,强度已钳制为 1.0", pos, vol)
         end
       end
 
@@ -126,7 +129,7 @@ local function collect_events(track, warnings)
 
       if (not is_transient) and len > MAX_CONTINUOUS then
         warnings[#warnings + 1] = string.format(
-          "item @%.3fs: continuous %.1fs exceeds the 30s Core Haptics limit", pos, len)
+          "item @%.3fs: 持续事件 %.1fs 超过 Core Haptics 的 30 秒上限", pos, len)
       end
 
       events[#events + 1] = {
@@ -151,8 +154,8 @@ local function collect_events(track, warnings)
     if e.transient then
       if prev_t and (e.time - prev_t) < (MIN_TRANSIENT_GAP - 0.0005) then
         warnings[#warnings + 1] = string.format(
-          "transients %.0fms apart at %.3fs — actuator needs ~100ms for distinct pulses",
-          (e.time - prev_t) * 1000, e.pos)
+          "位于 %.3fs 的瞬态与前一个仅隔 %.0fms,低于 %.0fms 可能糊成一个脉冲",
+          e.pos, (e.time - prev_t) * 1000, MIN_TRANSIENT_GAP * 1000)
       end
       prev_t = e.time
     end
@@ -223,8 +226,8 @@ local function main()
 
   local track = find_haptics_track()
   if not track then
-    reaper.MB('No track named "' .. TRACK_NAME .. '" found.\n\n' ..
-      "Create a track, name it HAPTICS, and put one item per haptic event on it.",
+    reaper.MB('未找到名为 "' .. TRACK_NAME .. '" 的轨道。\n\n' ..
+      "请新建一条轨道命名为 HAPTICS,每个震动事件放一个 item。",
       "ReaperHaptics", 0)
     return
   end
@@ -233,8 +236,8 @@ local function main()
   local events, has_sel = collect_events(track, warnings)
   if #events == 0 then
     reaper.MB(has_sel
-      and "No items start inside the time selection on the HAPTICS track."
-      or "The HAPTICS track has no items.", "ReaperHaptics", 0)
+      and "时间选区内没有起点落在选区里的 HAPTICS 轨 item。"
+      or "HAPTICS 轨上没有任何 item。", "ReaperHaptics", 0)
     return
   end
 
@@ -248,8 +251,8 @@ local function main()
 
   local ok, err = write_file(ahap_path, to_ahap(events))
   if not ok then
-    reaper.MB("Cannot write " .. ahap_path .. "\n" .. tostring(err) ..
-      "\n\nRun the export again and enter a different folder.",
+    reaper.MB("无法写入 " .. ahap_path .. "\n" .. tostring(err) ..
+      "\n\n请重新运行导出并换一个文件夹。",
       "ReaperHaptics", 0)
     return
   end
@@ -262,12 +265,12 @@ local function main()
     if e_end > last_end then last_end = e_end end
   end
 
-  msg(string.format("ReaperHaptics: exported %d events (%d transient, %d continuous), length %.0fms",
+  msg(string.format("ReaperHaptics: 已导出 %d 个事件(瞬态 %d 个,持续 %d 个),总长 %.0fms",
     #events, n_trans, n_cont, last_end * 1000))
   msg("  " .. ahap_path)
   msg("  " .. json_path)
-  for _, w in ipairs(warnings) do msg("  WARN " .. w) end
-  if #warnings == 0 then msg("  no warnings") end
+  for _, w in ipairs(warnings) do msg("  警告: " .. w) end
+  if #warnings == 0 then msg("  无警告") end
 end
 
 main()

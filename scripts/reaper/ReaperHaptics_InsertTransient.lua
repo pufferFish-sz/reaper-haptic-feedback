@@ -14,7 +14,7 @@ the edit cursor. Honors snap when snap is enabled.
 ]]
 
 local TRACK_NAME = "HAPTICS"
-local DEFAULT_LEN = 0.080 -- s, safely below the 150 ms transient threshold
+local DEFAULT_LEN = 0.025 -- s, safely below the 150 ms transient threshold
 
 local function script_dir()
   local info = debug.getinfo(1, "S")
@@ -81,7 +81,7 @@ local function main()
   reaper.SetMediaItemSelected(item, true)
   reaper.UpdateArrange()
 
-  reaper.Undo_EndBlock("Insert haptic transient item", -1)
+  reaper.Undo_EndBlock("插入瞬态震动 item", -1)
 end
 
 main()

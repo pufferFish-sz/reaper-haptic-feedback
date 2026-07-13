@@ -130,7 +130,7 @@ describe("validateAhap", () => {
     expect(result.issues[0]?.message).toContain("30");
   });
 
-  it("warns about transients spaced closer than 100ms", () => {
+  it("warns about transients spaced closer than the 20ms floor", () => {
     const makeTransient = (time: number) => ({
       Event: {
         EventType: "HapticTransient",
@@ -143,14 +143,14 @@ describe("validateAhap", () => {
     });
     // deliberately out of order — the check must sort by time first
     const result = validateAhap({
-      Pattern: [makeTransient(0.25), makeTransient(0), makeTransient(0.04)],
+      Pattern: [makeTransient(0.25), makeTransient(0), makeTransient(0.01)],
     });
     expect(result.valid).toBe(true); // warning, not error
     const spacing = result.issues.filter((i) =>
       i.message.includes("distinct pulses"),
     );
     expect(spacing).toHaveLength(1);
-    expect(spacing[0]?.message).toContain("40ms");
+    expect(spacing[0]?.message).toContain("10ms");
   });
 
   it("warns that parameter curves are dropped by the preview path", () => {
@@ -369,10 +369,10 @@ describe("validateHapticEvents", () => {
     expect(paths).toEqual(["[0].time", "[0].intensity", "[1].duration"]);
   });
 
-  it("warns about transients closer than 100ms (times are ms)", () => {
+  it("warns about transients closer than the 20ms floor (times are ms)", () => {
     const result = validateHapticEvents([
       { time: 0, intensity: 0.5, sharpness: 0.5 },
-      { time: 50, intensity: 0.5, sharpness: 0.5 },
+      { time: 10, intensity: 0.5, sharpness: 0.5 },
     ]);
     expect(result.valid).toBe(true);
     expect(

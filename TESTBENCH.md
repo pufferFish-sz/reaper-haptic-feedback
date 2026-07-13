@@ -49,7 +49,7 @@ in REAPER. Empty items work too, but they have no volume handle — write
 
 Scope: with a time selection, items **starting** inside it, times relative
 to the selection start; without one, all items, relative to the first item.
-Export warnings (clamped volumes, sub-100 ms transient gaps, >30 s
+Export warnings (clamped volumes, sub-20 ms transient gaps, >30 s
 continuous) land in the REAPER console.
 
 ## 1. CLI validation (on the REAPER/Windows machine)
@@ -66,7 +66,7 @@ node scripts/validate-ahap.js --json path\to\my-effect.ahap   # machine-readable
 - Exit code `0` = no errors (warnings allowed), `1` = errors found.
 - Errors: invalid JSON, wrong shapes, intensity/sharpness outside 0–1,
   negative times, missing/over-30s continuous durations.
-- Warnings: transients closer than ~100 ms, parameter curves / audio events /
+- Warnings: transients closer than ~20 ms, parameter curves / audio events /
   envelope parameters (dropped by the preview path), missing explicit
   intensity/sharpness.
 
@@ -189,6 +189,7 @@ continuous only>, "intensity": 0–1, "sharpness": 0–1 }` — matching
   in the same file are the schema for the `.ahap` target.
 - Always write explicit `HapticIntensity` and `HapticSharpness` (see fidelity
   notes above).
-- Keep transients ≥ 100 ms apart when they should read as distinct pulses
+- Keep transients ≥ 20 ms apart (empirical floor: ~23 ms gaps still read as
+  distinct pulses on device; Apple's 100 ms guidance is conservative)
   (`MIN_TRANSIENT_SPACING_MS`); the validator flags violations.
 - Continuous events must be > 0 s and ≤ 30 s (Core Haptics hard limit).
