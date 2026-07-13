@@ -24,7 +24,7 @@
     "test": "jest",
     "build": "bob build",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "prepare": "husky",
+    "prepare": "husky || exit 0",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"

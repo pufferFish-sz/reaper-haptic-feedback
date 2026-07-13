@@ -94,10 +94,19 @@ bundle root. The example project already bundles
 1. Copy your `.ahap` files into `example/ios/HapticFeedbackExample/haptics/`.
    Because it is a blue folder reference (not a yellow group), files dropped
    into it on disk are picked up automatically — no Xcode clicking needed.
-2. Rebuild and run on the device: `cd example && npm install && cd ios &&
-bundle install && bundle exec pod install`, then open
-   `HapticFeedbackExample.xcworkspace` in Xcode, select your device, Run.
-   (Or `npm run ios -- --device` from `example/`.)
+2. Rebuild and run on the device — **install repo-root deps first**; the
+   example depends on `file:../`, and installing it runs the root `prepare`
+   script, which needs the root `node_modules`:
+
+   ```bash
+   npm install                # repo root first
+   cd example && npm install
+   cd ios && pod install      # or: bundle install && bundle exec pod install
+   ```
+
+   Then open `HapticFeedbackExample.xcworkspace` in Xcode, select your
+   device, Run. (Or `npm run ios -- --device` from `example/`.)
+
 3. In the app: **Library Demo tab → AHAP Files**. To add your own entries to
    that list, edit `AHAP_FILES` in `example/App.tsx` — `file` is the file
    name inside `haptics/`, `fallback` is the Android pattern.
