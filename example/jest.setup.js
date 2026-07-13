@@ -29,17 +29,3 @@ jest.mock('react-native/Libraries/TurboModule/TurboModuleRegistry', () => {
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
-
-// react-native-iap is backed by Nitro native modules that do not exist in jest.
-jest.mock('react-native-iap', () => ({
-  ErrorCode: { UserCancelled: 'user-cancelled' },
-  useIAP: () => ({
-    connected: false,
-    products: [],
-    availablePurchases: [],
-    fetchProducts: jest.fn(),
-    requestPurchase: jest.fn(),
-    finishTransaction: jest.fn(),
-    getAvailablePurchases: jest.fn(),
-  }),
-}));
