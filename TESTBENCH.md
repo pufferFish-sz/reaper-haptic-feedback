@@ -14,20 +14,29 @@ the fastest possible iteration loop. See `CLAUDE.md` for the pipeline spec.
 
 ## 0. Authoring in REAPER (the upstream half)
 
-[`scripts/reaper/ReaperHaptics_Export.lua`](scripts/reaper/ReaperHaptics_Export.lua)
-turns items on a `HAPTICS` track into `preview.ahap` + `preview.events.json`.
+**Designers only need one thing:
+[`scripts/reaper/ReaperHaptics_Panel.lua`](scripts/reaper/ReaperHaptics_Panel.lua)**
+— a dockable panel (native gfx, no ReaImGui required) with the whole
+workflow as numbered buttons:
 
-Install once: REAPER → Actions → Show action list → New action → Load
-ReaScript → pick `ReaperHaptics_Export.lua` → assign a keyboard shortcut
-(e.g. `Ctrl+Shift+H`). Do the same for
-`ReaperHaptics_InsertTransient.lua` (suggestion: `T`). Every export pops a
-confirm dialog for the output folder, prefilled with the last confirmed
-choice (project path the first time) — Enter accepts, Cancel aborts.
+1. 启用震动编辑 — creates/locates the `HAPTICS` track
+2. 插入瞬态 — drops a 25 ms sine item at the cursor (drag to lengthen)
+3. 启动手机服务器 — launches `serve-haptics.bat` on the export folder and
+   shows the exact URL to type into the phone (detected from `ipconfig`)
+4. 试发送选中 — exports only the selected items (no dialog), for
+   auditioning a single event on the phone
+5. 导出到手机 — full export (time selection / everything), confirms the
+   folder first
 
-`ReaperHaptics_InsertTransient.lua` is the fast way to author: each press
-drops an 80 ms sine item (= transient) at the mouse cursor (SWS installed)
-or edit cursor, creating the `HAPTICS` track if needed. Drag the right edge
-to stretch it — at ≥ 150 ms it exports as continuous, and the sine loops.
+Below the buttons: a live list of the current haptic events
+(time/type/intensity/sharpness); clicking a row selects that item in the
+arrange view, ready for 试发送选中.
+
+Install: Actions → Show action list → New action → Load ReaScript → pick
+`ReaperHaptics_Panel.lua`, then right-click a toolbar → Customize toolbar →
+add that action as a button. Optional keyboard entry points (same logic,
+via `ReaperHaptics_Core.lua`): `ReaperHaptics_InsertTransient.lua` on `T`,
+`ReaperHaptics_Export.lua` on `Ctrl+Shift+H`.
 
 Authoring model — one media item per haptic event on a track named `HAPTICS`.
 Build items from
