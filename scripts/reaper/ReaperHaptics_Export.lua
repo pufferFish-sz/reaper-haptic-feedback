@@ -19,7 +19,8 @@ Scope:
     times exported relative to the selection start.
   * No time selection: all items on the track, relative to the first item.
 
-Output (written to the export folder, see ReaperHaptics_SetExportFolder.lua):
+Output — every export pops a confirm dialog for the target folder
+(prefilled with the last confirmed choice; Enter accepts, Cancel aborts):
   * preview.ahap        — Apple AHAP, times in SECONDS   (iOS playAHAP / bench)
   * preview.events.json — HapticEvent[], times in MS     (Android / bench)
 
@@ -45,12 +46,14 @@ local function clamp01(v) return math.max(0, math.min(1, v)) end
 -- ---------------------------------------------------------------- export dir
 
 local function get_export_dir()
-  local dir = reaper.GetExtState(EXT_SECTION, EXT_KEY_DIR)
-  if dir ~= "" then return dir end
-  local default = reaper.GetProjectPath("")
+  -- Confirm the folder on every export: prefilled with the remembered
+  -- choice (or the project path the first time), Enter to accept,
+  -- Cancel to abort the export. Whatever is confirmed is remembered.
+  local current = reaper.GetExtState(EXT_SECTION, EXT_KEY_DIR)
+  if current == "" then current = reaper.GetProjectPath("") end
   local ok, csv = reaper.GetUserInputs(
-    "ReaperHaptics: export folder (asked once)", 1,
-    "Folder for preview.ahap:,extrawidth=260", default)
+    "ReaperHaptics: confirm export folder", 1,
+    "Folder for preview.ahap:,extrawidth=260", current)
   if not ok or csv == "" then return nil end
   reaper.SetExtState(EXT_SECTION, EXT_KEY_DIR, csv, true)
   return csv
@@ -246,7 +249,7 @@ local function main()
   local ok, err = write_file(ahap_path, to_ahap(events))
   if not ok then
     reaper.MB("Cannot write " .. ahap_path .. "\n" .. tostring(err) ..
-      "\n\nRun ReaperHaptics_SetExportFolder.lua to pick a different folder.",
+      "\n\nRun the export again and enter a different folder.",
       "ReaperHaptics", 0)
     return
   end

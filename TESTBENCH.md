@@ -20,10 +20,9 @@ turns items on a `HAPTICS` track into `preview.ahap` + `preview.events.json`.
 Install once: REAPER → Actions → Show action list → New action → Load
 ReaScript → pick `ReaperHaptics_Export.lua` → assign a keyboard shortcut
 (e.g. `Ctrl+Shift+H`). Do the same for
-`ReaperHaptics_InsertTransient.lua` (suggestion: `T`) and
-`ReaperHaptics_SetExportFolder.lua` (no shortcut needed — run it from the
-action list when you want to change the output folder; the first export
-prompts for it automatically).
+`ReaperHaptics_InsertTransient.lua` (suggestion: `T`). Every export pops a
+confirm dialog for the output folder, prefilled with the last confirmed
+choice (project path the first time) — Enter accepts, Cancel aborts.
 
 `ReaperHaptics_InsertTransient.lua` is the fast way to author: each press
 drops an 80 ms sine item (= transient) at the mouse cursor (SWS installed)
