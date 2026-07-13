@@ -11,6 +11,7 @@ REAPER 原生 gfx 实现,零依赖(不需要 ReaImGui)。功能:
 下方实时列出当前的震动事件,点击某一行 = 在工程里选中该 item,
 再点『试发送选中』即可单发到手机。
 
+窗口可拉伸:放大时字体等比放大;缩小到基准尺寸(600x560)为止。
 建议:加载后把它拖到工具栏(右键工具栏 → 自定义)当常驻按钮。
 ]]
 
@@ -18,7 +19,7 @@ local core = dofile(
   (debug.getinfo(1, "S").source:match("^@(.*[/\\])")) .. "ReaperHaptics_Core.lua")
 
 local EXT_SECTION = "ReaperHaptics"
-local WIN_W, WIN_H = 560, 520
+local BASE_W, BASE_H = 600, 560 -- 最小(基准)尺寸,缩小到此为止
 
 -- ------------------------------------------------------------------- state
 
@@ -27,6 +28,7 @@ local ips = nil -- lazy: fetched on first draw / server start
 local scroll = 0
 local mouse_was_down = false
 local clicked_this_frame = false
+local scale = 1
 
 -- ---------------------------------------------------------------- gfx utils
 
@@ -44,18 +46,15 @@ local COL = {
   row_sel = { 0.23, 0.38, 0.62 },
 }
 
+local function px(v) return math.floor(v * scale + 0.5) end
+
 local function set_col(c) gfx.set(c[1], c[2], c[3], 1) end
 
 local function draw_text(x, y, text, col, size)
-  gfx.setfont(1, "Microsoft YaHei", size or 16)
+  gfx.setfont(1, "Microsoft YaHei", px(size or 17))
   set_col(col or COL.text)
   gfx.x, gfx.y = x, y
   gfx.drawstr(text)
-end
-
-local function text_w(text, size)
-  gfx.setfont(1, "Microsoft YaHei", size or 16)
-  return gfx.measurestr(text)
 end
 
 local function hit(x, y, w, h)
@@ -69,7 +68,7 @@ local function button(x, y, w, h, label, accent)
   local hov = accent and COL.accent_hover or COL.btn_hover
   set_col(hover and hov or base)
   gfx.rect(x, y, w, h, 1)
-  gfx.setfont(1, "Microsoft YaHei", 16)
+  gfx.setfont(1, "Microsoft YaHei", px(18))
   set_col(COL.text)
   local tw = gfx.measurestr(label)
   gfx.x = x + (w - tw) / 2
@@ -125,25 +124,25 @@ local function draw_events_list(x, y, w, h)
 
   local track = core.find_track()
   if not track then
-    draw_text(x + 12, y + 10, "(还没有 HAPTICS 轨,点上方『启用震动编辑』)", COL.dim, 15)
+    draw_text(x + px(12), y + px(10), "(还没有 HAPTICS 轨,点上方『启用震动编辑』)", COL.dim, 16)
     return
   end
 
   local events = core.collect_events(track, "auto")
   if #events == 0 then
-    draw_text(x + 12, y + 10, "(暂无事件:点『插入瞬态』或按你绑的快捷键)", COL.dim, 15)
+    draw_text(x + px(12), y + px(10), "(暂无事件:点『插入瞬态』或按你绑的快捷键)", COL.dim, 16)
     return
   end
 
-  draw_text(x + 12, y + 8, "时间", COL.dim, 13)
-  draw_text(x + 90, y + 8, "类型", COL.dim, 13)
-  draw_text(x + 210, y + 8, "强度", COL.dim, 13)
-  draw_text(x + 280, y + 8, "锐度", COL.dim, 13)
-  draw_text(x + 350, y + 8, "(点击行=在工程中选中)", COL.dim, 13)
+  draw_text(x + px(12), y + px(8), "时间", COL.dim, 15)
+  draw_text(x + px(100), y + px(8), "类型", COL.dim, 15)
+  draw_text(x + px(240), y + px(8), "强度", COL.dim, 15)
+  draw_text(x + px(320), y + px(8), "锐度", COL.dim, 15)
+  draw_text(x + px(400), y + px(8), "(点击行=选中)", COL.dim, 15)
 
-  local row_h = 24
-  local list_y = y + 30
-  local visible = math.floor((h - 36) / row_h)
+  local row_h = px(28)
+  local list_y = y + px(34)
+  local visible = math.floor((h - px(40)) / row_h)
 
   local wheel = gfx.mouse_wheel
   if wheel ~= 0 then
@@ -163,10 +162,10 @@ local function draw_events_list(x, y, w, h)
 
     if selected then
       set_col(COL.row_sel)
-      gfx.rect(x + 4, ry - 2, w - 8, row_h - 2, 1)
+      gfx.rect(x + px(4), ry - px(2), w - px(8), row_h - px(2), 1)
     end
 
-    if hit(x + 4, ry - 2, w - 8, row_h - 2) and clicked_this_frame then
+    if hit(x + px(4), ry - px(2), w - px(8), row_h - px(2)) and clicked_this_frame then
       reaper.SelectAllMediaItems(0, false)
       reaper.SetMediaItemSelected(e.item, true)
       reaper.UpdateArrange()
@@ -175,16 +174,16 @@ local function draw_events_list(x, y, w, h)
 
     local type_label = e.transient and "瞬态"
       or string.format("持续 %.0fms", e.len * 1000)
-    draw_text(x + 12, ry, string.format("%.3fs", e.time), COL.text, 14)
-    draw_text(x + 90, ry, type_label, e.transient and COL.accent_hover or COL.warn, 14)
-    draw_text(x + 210, ry, string.format("%.2f", e.intensity), COL.text, 14)
-    draw_text(x + 280, ry, string.format("%.2f", e.sharpness), COL.text, 14)
+    draw_text(x + px(12), ry, string.format("%.3fs", e.time), COL.text, 16)
+    draw_text(x + px(100), ry, type_label, e.transient and COL.accent_hover or COL.warn, 16)
+    draw_text(x + px(240), ry, string.format("%.2f", e.intensity), COL.text, 16)
+    draw_text(x + px(320), ry, string.format("%.2f", e.sharpness), COL.text, 16)
   end
 
   if #events > visible then
-    draw_text(x + w - 90, y + 8,
+    draw_text(x + w - px(100), y + px(8),
       string.format("%d/%d ↕滚轮", math.min(scroll + visible, #events), #events),
-      COL.dim, 13)
+      COL.dim, 15)
   end
 end
 
@@ -192,32 +191,37 @@ local function draw()
   set_col(COL.bg)
   gfx.rect(0, 0, gfx.w, gfx.h, 1)
 
+  local margin = px(16)
+  local gap = px(8)
+
   -- title + guide
-  draw_text(16, 12, "ReaperHaptics 震动编辑", COL.text, 20)
-  draw_text(16, 40,
+  draw_text(margin, px(12), "ReaperHaptics 震动编辑", COL.text, 22)
+  draw_text(margin, px(44),
     "音量把手=强度 · item 备注写 s=0.3 调锐度 · 拖长 ≥150ms 变持续震动",
-    COL.dim, 13)
+    COL.dim, 15)
 
-  -- buttons row 1
-  local bw, bh, gap = 168, 34, 8
-  if button(16, 64, bw, bh, "① 启用震动编辑") then act_enable() end
-  if button(16 + (bw + gap), 64, bw, bh, "② 插入瞬态 (光标处)") then act_insert() end
-  if button(16 + (bw + gap) * 2, 64, bw, bh, "③ 启动手机服务器") then act_server() end
-
-  -- buttons row 2
-  if button(16, 64 + bh + gap, bw, bh, "④ 试发送选中") then act_send_selected() end
-  if button(16 + (bw + gap), 64 + bh + gap, bw * 2 + gap, bh, "⑤ 导出到手机 (选区/全部)", true) then
+  -- buttons: two rows of three columns
+  local bh = px(40)
+  local bw = math.floor((gfx.w - margin * 2 - gap * 2) / 3)
+  local by1 = px(72)
+  local by2 = by1 + bh + gap
+  if button(margin, by1, bw, bh, "① 启用震动编辑") then act_enable() end
+  if button(margin + bw + gap, by1, bw, bh, "② 插入瞬态 (光标处)") then act_insert() end
+  if button(margin + (bw + gap) * 2, by1, bw, bh, "③ 启动手机服务器") then act_server() end
+  if button(margin, by2, bw, bh, "④ 试发送选中") then act_send_selected() end
+  if button(margin + bw + gap, by2, bw * 2 + gap, bh, "⑤ 导出到手机 (选区/全部)", true) then
     act_export()
   end
 
   -- connection info card
-  local info_y = 64 + (bh + gap) * 2 + 4
+  local info_y = by2 + bh + gap + px(4)
+  local info_h = px(76)
   set_col(COL.card)
-  gfx.rect(16, info_y, gfx.w - 32, 66, 1)
+  gfx.rect(margin, info_y, gfx.w - margin * 2, info_h, 1)
   local dir = core.get_export_dir_raw()
-  draw_text(28, info_y + 8, "导出文件夹: " ..
+  draw_text(margin + px(12), info_y + px(8), "导出文件夹: " ..
     (dir ~= "" and dir or "(未设置,导出/启动服务器时会询问)"),
-    dir ~= "" and COL.text or COL.dim, 14)
+    dir ~= "" and COL.text or COL.dim, 16)
   if ips == nil then ips = core.get_local_ips() end
   if #ips > 0 then
     local urls = {}
@@ -226,29 +230,47 @@ local function draw()
         urls[#urls + 1] = string.format("http://%s:%d/preview.ahap", ip, core.SERVER_PORT)
       end
     end
-    draw_text(28, info_y + 28, "手机 URL: " .. table.concat(urls, "  或  "), COL.ok, 14)
-    draw_text(28, info_y + 46, "手机 app → REAPER Bench 页签 → 填上面 URL → 开 Watch(仅首次)", COL.dim, 13)
+    draw_text(margin + px(12), info_y + px(30), "手机 URL: " .. table.concat(urls, "  或  "), COL.ok, 16)
+    draw_text(margin + px(12), info_y + px(52),
+      "手机 app → REAPER Bench 页签 → 填上面 URL → 开 Watch(仅首次)", COL.dim, 15)
   else
-    draw_text(28, info_y + 28, "手机 URL: 未检测到局域网 IP(点『启动手机服务器』后刷新)", COL.dim, 14)
+    draw_text(margin + px(12), info_y + px(30),
+      "手机 URL: 未检测到局域网 IP(点『启动手机服务器』后刷新)", COL.dim, 16)
   end
 
   -- events list
-  local list_y = info_y + 74
-  draw_events_list(16, list_y, gfx.w - 32, gfx.h - list_y - 44)
+  local list_y = info_y + info_h + gap
+  local status_h = px(36)
+  draw_events_list(margin, list_y, gfx.w - margin * 2, gfx.h - list_y - status_h - gap)
 
   -- status line
   set_col(COL.card)
-  gfx.rect(0, gfx.h - 32, gfx.w, 32, 1)
-  draw_text(16, gfx.h - 26, status_line, COL.ok, 14)
+  gfx.rect(0, gfx.h - status_h, gfx.w, status_h, 1)
+  draw_text(margin, gfx.h - status_h + px(8), status_line, COL.ok, 16)
 end
 
 -- -------------------------------------------------------------------- loop
+
+local function update_scale()
+  local docked = gfx.dock(-1) > 0
+  if docked then
+    -- docker controls the size; shrink content down to 80% at most
+    scale = math.max(0.8, math.min(gfx.w / BASE_W, gfx.h / BASE_H))
+  else
+    -- enforce the minimum window size, grow fonts past it
+    if gfx.w < BASE_W or gfx.h < BASE_H then
+      gfx.init("", math.max(gfx.w, BASE_W), math.max(gfx.h, BASE_H))
+    end
+    scale = math.min(gfx.w / BASE_W, gfx.h / BASE_H)
+  end
+end
 
 local function loop()
   local down = (gfx.mouse_cap & 1) == 1
   clicked_this_frame = down and not mouse_was_down
   mouse_was_down = down
 
+  update_scale()
   draw()
   gfx.update()
 
@@ -262,5 +284,5 @@ local function loop()
 end
 
 local dock = tonumber(reaper.GetExtState(EXT_SECTION, "panel_dock")) or 0
-gfx.init("ReaperHaptics 震动编辑", WIN_W, WIN_H, dock)
+gfx.init("ReaperHaptics 震动编辑", BASE_W, BASE_H, dock)
 loop()
