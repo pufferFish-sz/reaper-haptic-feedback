@@ -12,6 +12,34 @@ the fastest possible iteration loop. See `CLAUDE.md` for the pipeline spec.
 | CLI validator         | [`scripts/validate-ahap.js`](scripts/validate-ahap.js)   | Check files on Windows before they ever reach a device.                                                                                                                                                                  |
 | Test-bench UI         | [`example/src/TestBench.tsx`](example/src/TestBench.tsx) | "REAPER Bench" tab in the example app: URL hot-reload with watch mode, paste-in JSON, validation report, event timeline.                                                                                                 |
 
+## 0. Authoring in REAPER (the upstream half)
+
+[`scripts/reaper/ReaperHaptics_Export.lua`](scripts/reaper/ReaperHaptics_Export.lua)
+turns items on a `HAPTICS` track into `preview.ahap` + `preview.events.json`.
+
+Install once: REAPER → Actions → Show action list → New action → Load
+ReaScript → pick `ReaperHaptics_Export.lua` → assign a keyboard shortcut
+(e.g. `Ctrl+Shift+H`). Do the same for `ReaperHaptics_SetExportFolder.lua`
+(no shortcut needed — run it from the action list when you want to change
+the output folder; first export prompts for it automatically).
+
+Authoring model — one media item per haptic event on a track named `HAPTICS`
+(empty items: Insert → Empty item):
+
+| Item property                    | Haptic meaning                          |
+| -------------------------------- | --------------------------------------- |
+| position                         | event start time                        |
+| length < 150 ms                  | `HapticTransient`                       |
+| length ≥ 150 ms                  | `HapticContinuous` (duration = length)  |
+| item volume × take volume        | intensity 0–1 (1.0 = 0 dB, clamped)     |
+| `s=0.7` in take name / item note | sharpness override (default: intensity) |
+| `type=t` / `type=c` in name/note | force transient / continuous            |
+
+Scope: with a time selection, items **starting** inside it, times relative
+to the selection start; without one, all items, relative to the first item.
+Export warnings (clamped volumes, sub-100 ms transient gaps, >30 s
+continuous) land in the REAPER console.
+
 ## 1. CLI validation (on the REAPER/Windows machine)
 
 ```powershell
