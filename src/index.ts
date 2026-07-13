@@ -9,6 +9,14 @@ export { pattern };
 export { PATTERN_CHARS } from "./utils/pattern";
 export type { AssertValidPattern } from "./utils/pattern";
 export { playHaptic } from "./utils/playHaptic";
+export {
+  validateAhap,
+  validateHapticEvents,
+  ahapToHapticEvents,
+  MIN_TRANSIENT_SPACING_MS,
+  MAX_CONTINUOUS_DURATION_S,
+} from "./utils/ahap";
+export type { AhapIssue, AhapValidationResult } from "./utils/ahap";
 export { TouchableHaptic } from "./components/TouchableHaptic";
 export type { TouchableHapticProps } from "./components/TouchableHaptic";
 export const {

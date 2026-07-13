@@ -9,6 +9,17 @@ import { pattern as realPattern } from "../utils/pattern";
 import { playHaptic as realPlayHaptic } from "../utils/playHaptic";
 import { Patterns as realPatterns } from "../presets";
 
+// Types, enums and pure TypeScript helpers — safe to expose unmocked
+export * from "../types";
+export { TouchableHaptic } from "../components/TouchableHaptic";
+export {
+  validateAhap,
+  validateHapticEvents,
+  ahapToHapticEvents,
+  MIN_TRANSIENT_SPACING_MS,
+  MAX_CONTINUOUS_DURATION_S,
+} from "../utils/ahap";
+
 export const trigger = jest.fn();
 export const stop = jest.fn();
 export const isSupported = jest.fn().mockReturnValue(true);

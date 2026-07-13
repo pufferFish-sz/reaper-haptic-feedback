@@ -16,6 +16,7 @@ import SupportModal, {
   SUPPORT_STORAGE_KEY,
   higherTier,
 } from './src/SupportModal';
+import TestBench from './src/TestBench';
 
 import HapticFeedback, {
   HapticFeedbackTypes,
@@ -212,6 +213,7 @@ export default function App(): React.JSX.Element {
   const keyBg = isDark ? '#1e293b' : '#f8fafc';
   const keyBorder = isDark ? '#334155' : '#e2e8f0';
 
+  const [tab, setTab] = useState<'demo' | 'bench'>('demo');
   const [status, setStatus] = useState<SystemHapticStatus | null>(null);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [patternStr, setPatternStr] = useState('');
@@ -283,348 +285,381 @@ export default function App(): React.JSX.Element {
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={bg}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={{ backgroundColor: bg }}
-        contentContainerStyle={styles.scroll}
-      >
-        {/* Header */}
-        <View style={[styles.card, { backgroundColor: cardBg }]}>
-          <Text style={[styles.heading, { color: textPrimary }]}>
-            Haptic Feedback
-          </Text>
-          <Text style={[styles.subheading, { color: textSecondary }]}>
-            react-native-haptic-feedback demo
-          </Text>
-
-          {/* Best Supporter gold badge */}
-          {supportTier === 'support_2' && (
-            <View style={styles.goldBadgeWrap}>
-              <View style={styles.goldBadge}>
-                <Text style={styles.goldBadgeCrown}>👑</Text>
-                <Text style={styles.goldBadgeText}>Best Supporter</Text>
-              </View>
-            </View>
-          )}
-          {supportTier === 'support_1' && (
-            <View style={styles.goldBadgeWrap}>
-              <View style={[styles.goldBadge, styles.silverBadge]}>
-                <Text style={styles.goldBadgeCrown}>⭐</Text>
-                <Text style={[styles.goldBadgeText, styles.silverBadgeText]}>
-                  Super Supporter
-                </Text>
-              </View>
-            </View>
-          )}
-          {supportTier === 'support_0' && (
-            <View style={styles.goldBadgeWrap}>
-              <View style={[styles.goldBadge, styles.bronzeBadge]}>
-                <Text style={styles.goldBadgeCrown}>☕</Text>
-                <Text style={[styles.goldBadgeText, styles.bronzeBadgeText]}>
-                  Supporter
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {status ? (
-            <View style={styles.badgeRow}>
-              <Badge
-                label={
-                  status.vibrationEnabled ? '✓ Vibration on' : '✗ Vibration off'
-                }
-                color={status.vibrationEnabled ? '#22c55e' : '#ef4444'}
-              />
-              {status.ringerMode !== null && (
-                <Badge label={`Ringer: ${status.ringerMode}`} color="#6366f1" />
-              )}
-              <Badge
-                label={
-                  HapticFeedback.isSupported()
-                    ? '✓ Haptics supported'
-                    : '✗ Not supported'
-                }
-                color={HapticFeedback.isSupported() ? '#22c55e' : '#f59e0b'}
-              />
-            </View>
-          ) : (
-            <Text style={[styles.hint, { color: textSecondary }]}>
-              Checking system status…
-            </Text>
-          )}
-
-          {/* Support button */}
+      <View style={[styles.tabRow, { backgroundColor: cardBg }]}>
+        {(
+          [
+            { key: 'demo', label: 'Library Demo' },
+            { key: 'bench', label: 'REAPER Bench' },
+          ] as const
+        ).map(({ key, label }) => (
           <Pressable
-            style={({ pressed }) => [
-              styles.supportBtn,
-              pressed && { opacity: 0.75 },
-            ]}
-            onPress={() => setShowSupport(true)}
+            key={key}
+            style={[styles.tabBtn, tab === key && styles.tabBtnActive]}
+            onPress={() => setTab(key)}
           >
-            <Text style={styles.supportBtnText}>
-              {supportTier
-                ? '💛 Thank you for your support!'
-                : '❤️ Support the Developer'}
+            <Text
+              style={[
+                styles.tabText,
+                { color: tab === key ? '#ffffff' : textSecondary },
+              ]}
+            >
+              {label}
             </Text>
           </Pressable>
-        </View>
-
-        {/* Global enable/disable toggle */}
-        <SectionCard
-          title="Global Enable / Disable"
-          cardBg={cardBg}
-          titleColor={textSecondary}
+        ))}
+      </View>
+      {tab === 'bench' && <TestBench />}
+      {tab === 'demo' && (
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          style={{ backgroundColor: bg }}
+          contentContainerStyle={styles.scroll}
         >
-          <Text
-            style={[styles.hint, { color: textSecondary, marginBottom: 10 }]}
-          >
-            setEnabled() / isEnabled() — library-wide kill switch. Useful for
-            in-app haptics preference.
-          </Text>
-          <Pressable
-            style={({ pressed }) => [
-              styles.toggleBtn,
-              { backgroundColor: hapticsEnabled ? '#22c55e' : '#ef4444' },
-              pressed && styles.pressed,
-            ]}
-            onPress={toggleEnabled}
-          >
-            <Text style={styles.toggleBtnText}>
-              Haptics: {hapticsEnabled ? 'ENABLED' : 'DISABLED'}
+          {/* Header */}
+          <View style={[styles.card, { backgroundColor: cardBg }]}>
+            <Text style={[styles.heading, { color: textPrimary }]}>
+              Haptic Feedback
             </Text>
-          </Pressable>
-        </SectionCard>
+            <Text style={[styles.subheading, { color: textSecondary }]}>
+              react-native-haptic-feedback demo
+            </Text>
 
-        {/* All haptic types */}
-        {HAPTIC_GROUPS.map(group => (
+            {/* Best Supporter gold badge */}
+            {supportTier === 'support_2' && (
+              <View style={styles.goldBadgeWrap}>
+                <View style={styles.goldBadge}>
+                  <Text style={styles.goldBadgeCrown}>👑</Text>
+                  <Text style={styles.goldBadgeText}>Best Supporter</Text>
+                </View>
+              </View>
+            )}
+            {supportTier === 'support_1' && (
+              <View style={styles.goldBadgeWrap}>
+                <View style={[styles.goldBadge, styles.silverBadge]}>
+                  <Text style={styles.goldBadgeCrown}>⭐</Text>
+                  <Text style={[styles.goldBadgeText, styles.silverBadgeText]}>
+                    Super Supporter
+                  </Text>
+                </View>
+              </View>
+            )}
+            {supportTier === 'support_0' && (
+              <View style={styles.goldBadgeWrap}>
+                <View style={[styles.goldBadge, styles.bronzeBadge]}>
+                  <Text style={styles.goldBadgeCrown}>☕</Text>
+                  <Text style={[styles.goldBadgeText, styles.bronzeBadgeText]}>
+                    Supporter
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {status ? (
+              <View style={styles.badgeRow}>
+                <Badge
+                  label={
+                    status.vibrationEnabled
+                      ? '✓ Vibration on'
+                      : '✗ Vibration off'
+                  }
+                  color={status.vibrationEnabled ? '#22c55e' : '#ef4444'}
+                />
+                {status.ringerMode !== null && (
+                  <Badge
+                    label={`Ringer: ${status.ringerMode}`}
+                    color="#6366f1"
+                  />
+                )}
+                <Badge
+                  label={
+                    HapticFeedback.isSupported()
+                      ? '✓ Haptics supported'
+                      : '✗ Not supported'
+                  }
+                  color={HapticFeedback.isSupported() ? '#22c55e' : '#f59e0b'}
+                />
+              </View>
+            ) : (
+              <Text style={[styles.hint, { color: textSecondary }]}>
+                Checking system status…
+              </Text>
+            )}
+
+            {/* Support button */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.supportBtn,
+                pressed && { opacity: 0.75 },
+              ]}
+              onPress={() => setShowSupport(true)}
+            >
+              <Text style={styles.supportBtnText}>
+                {supportTier
+                  ? '💛 Thank you for your support!'
+                  : '❤️ Support the Developer'}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Global enable/disable toggle */}
           <SectionCard
-            key={group.title}
-            title={group.title}
+            title="Global Enable / Disable"
+            cardBg={cardBg}
+            titleColor={textSecondary}
+          >
+            <Text
+              style={[styles.hint, { color: textSecondary, marginBottom: 10 }]}
+            >
+              setEnabled() / isEnabled() — library-wide kill switch. Useful for
+              in-app haptics preference.
+            </Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.toggleBtn,
+                { backgroundColor: hapticsEnabled ? '#22c55e' : '#ef4444' },
+                pressed && styles.pressed,
+              ]}
+              onPress={toggleEnabled}
+            >
+              <Text style={styles.toggleBtnText}>
+                Haptics: {hapticsEnabled ? 'ENABLED' : 'DISABLED'}
+              </Text>
+            </Pressable>
+          </SectionCard>
+
+          {/* All haptic types */}
+          {HAPTIC_GROUPS.map(group => (
+            <SectionCard
+              key={group.title}
+              title={group.title}
+              cardBg={cardBg}
+              titleColor={textSecondary}
+            >
+              <View style={styles.chipWrap}>
+                {group.entries.map(({ label, type }) => (
+                  <TouchableHaptic
+                    key={type}
+                    hapticType={type}
+                    hapticTrigger="onPress"
+                    hapticOptions={DEFAULT_OPTIONS}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={styles.chipText}>{label}</Text>
+                  </TouchableHaptic>
+                ))}
+              </View>
+            </SectionCard>
+          ))}
+
+          {/* useHaptics hook demo */}
+          <SectionCard
+            title="useHaptics Hook"
+            cardBg={cardBg}
+            titleColor={textSecondary}
+          >
+            <Text
+              style={[styles.hint, { color: textSecondary, marginBottom: 10 }]}
+            >
+              Shared hook instance with merged default options. Methods are
+              stable across renders.
+            </Text>
+            <View style={styles.chipWrap}>
+              {(['impactLight', 'impactMedium', 'impactHeavy'] as const).map(
+                type => (
+                  <Pressable
+                    key={type}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      styles.chipHook,
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => haptics.trigger(type)}
+                  >
+                    <Text style={styles.chipText}>{type}</Text>
+                  </Pressable>
+                ),
+              )}
+            </View>
+          </SectionCard>
+
+          {/* Pattern presets */}
+          <SectionCard
+            title="Pattern Presets"
             cardBg={cardBg}
             titleColor={textSecondary}
           >
             <View style={styles.chipWrap}>
-              {group.entries.map(({ label, type }) => (
-                <TouchableHaptic
-                  key={type}
-                  hapticType={type}
-                  hapticTrigger="onPress"
-                  hapticOptions={DEFAULT_OPTIONS}
+              {Object.keys(PRESET_NOTATIONS).map(name => (
+                <Pressable
+                  key={name}
                   style={({ pressed }) => [
                     styles.chip,
+                    styles.chipPreset,
                     pressed && styles.pressed,
                   ]}
+                  onPress={() => playPreset(name)}
                 >
-                  <Text style={styles.chipText}>{label}</Text>
-                </TouchableHaptic>
+                  <Text style={styles.chipText}>{name}</Text>
+                  <Text style={styles.chipSub}>{PRESET_NOTATIONS[name]}</Text>
+                </Pressable>
               ))}
             </View>
           </SectionCard>
-        ))}
 
-        {/* useHaptics hook demo */}
-        <SectionCard
-          title="useHaptics Hook"
-          cardBg={cardBg}
-          titleColor={textSecondary}
-        >
-          <Text
-            style={[styles.hint, { color: textSecondary, marginBottom: 10 }]}
+          {/* AHAP files */}
+          <SectionCard
+            title={`AHAP Files  ·  ${
+              Platform.OS === 'ios' ? 'iOS' : 'Android fallback'
+            }`}
+            cardBg={cardBg}
+            titleColor={textSecondary}
           >
-            Shared hook instance with merged default options. Methods are stable
-            across renders.
-          </Text>
-          <View style={styles.chipWrap}>
-            {(['impactLight', 'impactMedium', 'impactHeavy'] as const).map(
-              type => (
+            <Text
+              style={[styles.hint, { color: textSecondary, marginBottom: 10 }]}
+            >
+              {Platform.OS === 'ios'
+                ? 'Plays .ahap files from ios/HapticFeedbackExample/haptics/.'
+                : 'Android: pattern fallbacks used instead of .ahap files.'}
+            </Text>
+            <View style={styles.chipWrap}>
+              {AHAP_FILES.map(({ name, file, fallback, description }) => (
                 <Pressable
-                  key={type}
+                  key={name}
                   style={({ pressed }) => [
                     styles.chip,
-                    styles.chipHook,
+                    styles.chipAhap,
                     pressed && styles.pressed,
                   ]}
-                  onPress={() => haptics.trigger(type)}
+                  onPress={() => playHaptic(file, fallback, DEFAULT_OPTIONS)}
                 >
-                  <Text style={styles.chipText}>{type}</Text>
-                </Pressable>
-              ),
-            )}
-          </View>
-        </SectionCard>
-
-        {/* Pattern presets */}
-        <SectionCard
-          title="Pattern Presets"
-          cardBg={cardBg}
-          titleColor={textSecondary}
-        >
-          <View style={styles.chipWrap}>
-            {Object.keys(PRESET_NOTATIONS).map(name => (
-              <Pressable
-                key={name}
-                style={({ pressed }) => [
-                  styles.chip,
-                  styles.chipPreset,
-                  pressed && styles.pressed,
-                ]}
-                onPress={() => playPreset(name)}
-              >
-                <Text style={styles.chipText}>{name}</Text>
-                <Text style={styles.chipSub}>{PRESET_NOTATIONS[name]}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </SectionCard>
-
-        {/* AHAP files */}
-        <SectionCard
-          title={`AHAP Files  ·  ${
-            Platform.OS === 'ios' ? 'iOS' : 'Android fallback'
-          }`}
-          cardBg={cardBg}
-          titleColor={textSecondary}
-        >
-          <Text
-            style={[styles.hint, { color: textSecondary, marginBottom: 10 }]}
-          >
-            {Platform.OS === 'ios'
-              ? 'Plays .ahap files from ios/HapticFeedbackExample/haptics/.'
-              : 'Android: pattern fallbacks used instead of .ahap files.'}
-          </Text>
-          <View style={styles.chipWrap}>
-            {AHAP_FILES.map(({ name, file, fallback, description }) => (
-              <Pressable
-                key={name}
-                style={({ pressed }) => [
-                  styles.chip,
-                  styles.chipAhap,
-                  pressed && styles.pressed,
-                ]}
-                onPress={() => playHaptic(file, fallback, DEFAULT_OPTIONS)}
-              >
-                <Text style={styles.chipText}>{name}</Text>
-                <Text style={styles.chipSub}>{description}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </SectionCard>
-
-        {/* Pattern playground */}
-        <SectionCard
-          title="Pattern Playground"
-          cardBg={cardBg}
-          titleColor={textSecondary}
-        >
-          <View
-            style={[
-              styles.patternDisplay,
-              { borderColor: canPlay ? '#3b82f6' : keyBorder },
-            ]}
-          >
-            {patternStr ? (
-              <PatternPreview notation={patternStr} textColor={textPrimary} />
-            ) : (
-              <Text
-                style={[styles.patternPlaceholder, { color: textSecondary }]}
-              >
-                tap keys below to build a pattern…
-              </Text>
-            )}
-            {patternStr.length > 0 && (
-              <Text style={[styles.eventCount, { color: textSecondary }]}>
-                {patternEvents.length} event
-                {patternEvents.length !== 1 ? 's' : ''}
-              </Text>
-            )}
-          </View>
-
-          <View style={[styles.legendRow, { borderColor: keyBorder }]}>
-            {PATTERN_KEYS.map(k => (
-              <View key={k.char} style={styles.legendCell}>
-                <Text style={[styles.legendChar, { color: textPrimary }]}>
-                  {k.char}
-                </Text>
-                <Text style={[styles.legendHint, { color: textSecondary }]}>
-                  {k.hint}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.keyboard}>
-            <View style={styles.keyRow}>
-              {PATTERN_KEYS.map(k => (
-                <Pressable
-                  key={k.char}
-                  style={({ pressed }) => [
-                    styles.key,
-                    { backgroundColor: keyBg, borderColor: keyBorder },
-                    pressed && styles.keyDown,
-                  ]}
-                  onPress={() => appendKey(k.char)}
-                >
-                  <Text style={[styles.keyMain, { color: textPrimary }]}>
-                    {k.display}
-                  </Text>
-                  <Text style={[styles.keySub, { color: textSecondary }]}>
-                    {k.hint}
-                  </Text>
+                  <Text style={styles.chipText}>{name}</Text>
+                  <Text style={styles.chipSub}>{description}</Text>
                 </Pressable>
               ))}
             </View>
-            <View style={styles.keyRow}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.keyAction,
-                  { backgroundColor: keyBg, borderColor: keyBorder },
-                  pressed && styles.keyDown,
-                ]}
-                onPress={backspace}
-              >
-                <Text style={[styles.keyMain, { color: textPrimary }]}>⌫</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.keyAction,
-                  { borderColor: '#fca5a5', borderWidth: 1 },
-                  pressed && styles.keyDown,
-                ]}
-                onPress={clearPattern}
-              >
-                <Text style={[styles.keyMain, { color: '#ef4444' }]}>
-                  Clear
-                </Text>
-              </Pressable>
-            </View>
-          </View>
+          </SectionCard>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.playBtn,
-              !canPlay && styles.playBtnDisabled,
-              pressed && canPlay && styles.pressed,
-            ]}
-            onPress={playPattern}
-            disabled={!canPlay}
+          {/* Pattern playground */}
+          <SectionCard
+            title="Pattern Playground"
+            cardBg={cardBg}
+            titleColor={textSecondary}
           >
-            <Text
+            <View
               style={[
-                styles.playBtnText,
-                !canPlay && styles.playBtnTextDisabled,
+                styles.patternDisplay,
+                { borderColor: canPlay ? '#3b82f6' : keyBorder },
               ]}
             >
-              ▶ Play Pattern
-            </Text>
-          </Pressable>
+              {patternStr ? (
+                <PatternPreview notation={patternStr} textColor={textPrimary} />
+              ) : (
+                <Text
+                  style={[styles.patternPlaceholder, { color: textSecondary }]}
+                >
+                  tap keys below to build a pattern…
+                </Text>
+              )}
+              {patternStr.length > 0 && (
+                <Text style={[styles.eventCount, { color: textSecondary }]}>
+                  {patternEvents.length} event
+                  {patternEvents.length !== 1 ? 's' : ''}
+                </Text>
+              )}
+            </View>
 
-          {lastPlayed ? (
-            <Text style={[styles.lastPlayed, { color: textSecondary }]}>
-              Last: {lastPlayed}
-            </Text>
-          ) : null}
-        </SectionCard>
-      </ScrollView>
+            <View style={[styles.legendRow, { borderColor: keyBorder }]}>
+              {PATTERN_KEYS.map(k => (
+                <View key={k.char} style={styles.legendCell}>
+                  <Text style={[styles.legendChar, { color: textPrimary }]}>
+                    {k.char}
+                  </Text>
+                  <Text style={[styles.legendHint, { color: textSecondary }]}>
+                    {k.hint}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.keyboard}>
+              <View style={styles.keyRow}>
+                {PATTERN_KEYS.map(k => (
+                  <Pressable
+                    key={k.char}
+                    style={({ pressed }) => [
+                      styles.key,
+                      { backgroundColor: keyBg, borderColor: keyBorder },
+                      pressed && styles.keyDown,
+                    ]}
+                    onPress={() => appendKey(k.char)}
+                  >
+                    <Text style={[styles.keyMain, { color: textPrimary }]}>
+                      {k.display}
+                    </Text>
+                    <Text style={[styles.keySub, { color: textSecondary }]}>
+                      {k.hint}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.keyRow}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.keyAction,
+                    { backgroundColor: keyBg, borderColor: keyBorder },
+                    pressed && styles.keyDown,
+                  ]}
+                  onPress={backspace}
+                >
+                  <Text style={[styles.keyMain, { color: textPrimary }]}>
+                    ⌫
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.keyAction,
+                    { borderColor: '#fca5a5', borderWidth: 1 },
+                    pressed && styles.keyDown,
+                  ]}
+                  onPress={clearPattern}
+                >
+                  <Text style={[styles.keyMain, { color: '#ef4444' }]}>
+                    Clear
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.playBtn,
+                !canPlay && styles.playBtnDisabled,
+                pressed && canPlay && styles.pressed,
+              ]}
+              onPress={playPattern}
+              disabled={!canPlay}
+            >
+              <Text
+                style={[
+                  styles.playBtnText,
+                  !canPlay && styles.playBtnTextDisabled,
+                ]}
+              >
+                ▶ Play Pattern
+              </Text>
+            </Pressable>
+
+            {lastPlayed ? (
+              <Text style={[styles.lastPlayed, { color: textSecondary }]}>
+                Last: {lastPlayed}
+              </Text>
+            ) : null}
+          </SectionCard>
+        </ScrollView>
+      )}
 
       <SupportModal
         visible={showSupport}
@@ -642,6 +677,23 @@ export default function App(): React.JSX.Element {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   scroll: { padding: 16, gap: 12 },
+
+  tabRow: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 10,
+    padding: 4,
+    gap: 4,
+  },
+  tabBtn: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  tabBtnActive: { backgroundColor: '#3b82f6' },
+  tabText: { fontSize: 13, fontWeight: '700' },
 
   card: {
     borderRadius: 14,

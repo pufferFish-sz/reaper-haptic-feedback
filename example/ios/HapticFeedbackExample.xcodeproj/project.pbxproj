@@ -10,9 +10,7 @@
 		0C80B921A6F3F58F76C31292 /* libPods-HapticFeedbackExample.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-HapticFeedbackExample.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3F6B47332F781C0F001CE121 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3F6B47322F781C0F001CE121 /* StoreKit.framework */; };
-		3FA5E8052F65A70800ADD034 /* rumble.ahap in Resources */ = {isa = PBXBuildFile; fileRef = 3FA5E8022F65A70800ADD034 /* rumble.ahap */; };
-		3FA5E8062F65A70800ADD034 /* heartbeat.ahap in Resources */ = {isa = PBXBuildFile; fileRef = 3FA5E8032F65A70800ADD034 /* heartbeat.ahap */; };
-		3FA5E8072F65A70800ADD034 /* celebration.ahap in Resources */ = {isa = PBXBuildFile; fileRef = 3FA5E8042F65A70800ADD034 /* celebration.ahap */; };
+		3FA5E8102F65A70800ADD034 /* haptics in Resources */ = {isa = PBXBuildFile; fileRef = AB1F9B4CC84532976F8169F5 /* haptics */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		F4C9CF72DE214D23EC46A522 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
@@ -25,16 +23,11 @@
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = HapticFeedbackExample/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-HapticFeedbackExample.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HapticFeedbackExample.debug.xcconfig"; path = "Target Support Files/Pods-HapticFeedbackExample/Pods-HapticFeedbackExample.debug.xcconfig"; sourceTree = "<group>"; };
 		3F6B47322F781C0F001CE121 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
-		3FA5E8022F65A70800ADD034 /* rumble.ahap */ = {isa = PBXFileReference; lastKnownFileType = text; name = rumble.ahap; path = HapticFeedbackExample/haptics/rumble.ahap; sourceTree = "<group>"; };
-		3FA5E8032F65A70800ADD034 /* heartbeat.ahap */ = {isa = PBXFileReference; lastKnownFileType = text; name = heartbeat.ahap; path = HapticFeedbackExample/haptics/heartbeat.ahap; sourceTree = "<group>"; };
-		3FA5E8042F65A70800ADD034 /* celebration.ahap */ = {isa = PBXFileReference; lastKnownFileType = text; name = celebration.ahap; path = HapticFeedbackExample/haptics/celebration.ahap; sourceTree = "<group>"; };
-		48CBF08A52662904FCCCD0CD /* heartbeat.ahap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file; path = heartbeat.ahap; sourceTree = "<group>"; };
+		AB1F9B4CC84532976F8169F5 /* haptics */ = {isa = PBXFileReference; lastKnownFileType = folder; path = haptics; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-HapticFeedbackExample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HapticFeedbackExample.release.xcconfig"; path = "Target Support Files/Pods-HapticFeedbackExample/Pods-HapticFeedbackExample.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-HapticFeedbackExample.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HapticFeedbackExample.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = HapticFeedbackExample/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = HapticFeedbackExample/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		BADF61505E68A75A83E4F6C3 /* celebration.ahap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file; path = celebration.ahap; sourceTree = "<group>"; };
-		DB2F775C036126C3BB7C2AFD /* rumble.ahap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file; path = rumble.ahap; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -84,9 +77,6 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				3FA5E8042F65A70800ADD034 /* celebration.ahap */,
-				3FA5E8032F65A70800ADD034 /* heartbeat.ahap */,
-				3FA5E8022F65A70800ADD034 /* rumble.ahap */,
 				13B07FAE1A68108700A75B9A /* HapticFeedbackExample */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
@@ -104,16 +94,6 @@
 				13B07F961A680F5B00A75B9A /* HapticFeedbackExample.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		AB1F9B4CC84532976F8169F5 /* haptics */ = {
-			isa = PBXGroup;
-			children = (
-				48CBF08A52662904FCCCD0CD /* heartbeat.ahap */,
-				DB2F775C036126C3BB7C2AFD /* rumble.ahap */,
-				BADF61505E68A75A83E4F6C3 /* celebration.ahap */,
-			);
-			path = haptics;
 			sourceTree = "<group>";
 		};
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
@@ -185,9 +165,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3FA5E8052F65A70800ADD034 /* rumble.ahap in Resources */,
-				3FA5E8062F65A70800ADD034 /* heartbeat.ahap in Resources */,
-				3FA5E8072F65A70800ADD034 /* celebration.ahap in Resources */,
+				3FA5E8102F65A70800ADD034 /* haptics in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				F4C9CF72DE214D23EC46A522 /* PrivacyInfo.xcprivacy in Resources */,
