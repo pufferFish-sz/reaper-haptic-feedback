@@ -264,7 +264,11 @@ function M.confirm_export_dir()
   local ok, csv = reaper.GetUserInputs(
     "ReaperHaptics: 确认导出文件夹", 1,
     "preview.ahap 导出到:,extrawidth=260", current)
-  if not ok or csv == "" then return nil end
+  if not ok then return nil end
+  -- strip surrounding whitespace/quotes and trailing slashes — a trailing
+  -- backslash inside quotes breaks cmd.exe argument parsing later
+  csv = csv:gsub('^[%s"]+', ""):gsub('[%s"]+$', ""):gsub("[\\/]+$", "")
+  if csv == "" then return nil end
   reaper.SetExtState(EXT_SECTION, EXT_KEY_DIR, csv, true)
   return csv
 end
@@ -350,12 +354,19 @@ end
 
 -- Launch serve-haptics.bat in a new console window serving `dir`.
 function M.launch_server(dir)
-  local bat = M.script_dir() .. ".." .. package.config:sub(1, 1) .. "serve-haptics.bat"
+  -- sanitize: trailing backslash inside quotes breaks cmd.exe parsing
+  dir = dir:gsub('^[%s"]+', ""):gsub('[%s"]+$', ""):gsub("[\\/]+$", "")
+  -- resolve scripts/reaper/../serve-haptics.bat without a literal ".."
+  local sdir = M.script_dir()
+  local parent = sdir:match("^(.*[/\\])[^/\\]+[/\\]$") or sdir
+  local bat = parent .. "serve-haptics.bat"
   if not file_exists(bat) then
-    return false, "找不到 serve-haptics.bat(应位于 scripts/ 目录)"
+    return false, "找不到 " .. bat
   end
-  local cmd = string.format('cmd.exe /C start "ReaperHaptics Server" "%s" "%s" %d',
-    bat, dir, M.SERVER_PORT)
+  -- /D sets the working directory; the bat serves its cwd when run with
+  -- no arguments, so no path needs to be passed as an argument at all.
+  local cmd = string.format('cmd.exe /C start "ReaperHaptics Server" /D "%s" "%s"',
+    dir, bat)
   reaper.ExecProcess(cmd, -1) -- -1: don't wait
   return true
 end
