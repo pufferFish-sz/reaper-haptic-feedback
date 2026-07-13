@@ -38,7 +38,7 @@ type HapticGroup = { title: string; entries: HapticEntry[] };
 
 const HAPTIC_GROUPS: HapticGroup[] = [
   {
-    title: 'Impact',
+    title: '冲击 Impact',
     entries: [
       { label: 'Light', type: HapticFeedbackTypes.impactLight },
       { label: 'Medium', type: HapticFeedbackTypes.impactMedium },
@@ -48,7 +48,7 @@ const HAPTIC_GROUPS: HapticGroup[] = [
     ],
   },
   {
-    title: 'Notification',
+    title: '通知 Notification',
     entries: [
       { label: 'Success', type: HapticFeedbackTypes.notificationSuccess },
       { label: 'Warning', type: HapticFeedbackTypes.notificationWarning },
@@ -56,11 +56,11 @@ const HAPTIC_GROUPS: HapticGroup[] = [
     ],
   },
   {
-    title: 'Selection',
+    title: '选择 Selection',
     entries: [{ label: 'Selection', type: HapticFeedbackTypes.selection }],
   },
   {
-    title: 'Device Feedback',
+    title: '设备反馈',
     entries: [
       { label: 'Clock Tick', type: HapticFeedbackTypes.clockTick },
       { label: 'Context Click', type: HapticFeedbackTypes.contextClick },
@@ -74,7 +74,7 @@ const HAPTIC_GROUPS: HapticGroup[] = [
     ],
   },
   {
-    title: 'Android Effects',
+    title: 'Android 效果',
     entries: [
       { label: 'Click', type: HapticFeedbackTypes.effectClick },
       { label: 'Double Click', type: HapticFeedbackTypes.effectDoubleClick },
@@ -131,8 +131,8 @@ const PRESET_NOTATIONS: Record<string, string> = {
 };
 
 const PATTERN_KEYS = [
-  { char: 'o', display: 'o', hint: 'soft' },
-  { char: 'O', display: 'O', hint: 'strong' },
+  { char: 'o', display: 'o', hint: '轻' },
+  { char: 'O', display: 'O', hint: '重' },
   { char: '.', display: '·', hint: '150ms' },
   { char: '-', display: '—', hint: '400ms' },
   { char: '=', display: '≡', hint: '1 s' },
@@ -272,8 +272,8 @@ export default function App(): React.JSX.Element {
       <View style={[styles.tabRow, { backgroundColor: cardBg }]}>
         {(
           [
-            { key: 'demo', label: 'Library Demo' },
-            { key: 'bench', label: 'REAPER Bench' },
+            { key: 'demo', label: '库演示' },
+            { key: 'bench', label: 'REAPER 调试台' },
           ] as const
         ).map(({ key, label }) => (
           <Pressable
@@ -302,55 +302,48 @@ export default function App(): React.JSX.Element {
           {/* Header */}
           <View style={[styles.card, { backgroundColor: cardBg }]}>
             <Text style={[styles.heading, { color: textPrimary }]}>
-              Haptic Feedback
+              触感反馈
             </Text>
             <Text style={[styles.subheading, { color: textSecondary }]}>
-              react-native-haptic-feedback demo
+              react-native-haptic-feedback 演示
             </Text>
 
             {status ? (
               <View style={styles.badgeRow}>
                 <Badge
                   label={
-                    status.vibrationEnabled
-                      ? '✓ Vibration on'
-                      : '✗ Vibration off'
+                    status.vibrationEnabled ? '✓ 震动已开启' : '✗ 震动已关闭'
                   }
                   color={status.vibrationEnabled ? '#22c55e' : '#ef4444'}
                 />
                 {status.ringerMode !== null && (
-                  <Badge
-                    label={`Ringer: ${status.ringerMode}`}
-                    color="#6366f1"
-                  />
+                  <Badge label={`响铃: ${status.ringerMode}`} color="#6366f1" />
                 )}
                 <Badge
                   label={
-                    HapticFeedback.isSupported()
-                      ? '✓ Haptics supported'
-                      : '✗ Not supported'
+                    HapticFeedback.isSupported() ? '✓ 支持触感' : '✗ 不支持触感'
                   }
                   color={HapticFeedback.isSupported() ? '#22c55e' : '#f59e0b'}
                 />
               </View>
             ) : (
               <Text style={[styles.hint, { color: textSecondary }]}>
-                Checking system status…
+                正在检查系统状态…
               </Text>
             )}
           </View>
 
           {/* Global enable/disable toggle */}
           <SectionCard
-            title="Global Enable / Disable"
+            title="全局开关"
             cardBg={cardBg}
             titleColor={textSecondary}
           >
             <Text
               style={[styles.hint, { color: textSecondary, marginBottom: 10 }]}
             >
-              setEnabled() / isEnabled() — library-wide kill switch. Useful for
-              in-app haptics preference.
+              setEnabled() / isEnabled() — 库级总开关,可用于 app
+              内震动偏好设置。
             </Text>
             <Pressable
               style={({ pressed }) => [
@@ -361,7 +354,7 @@ export default function App(): React.JSX.Element {
               onPress={toggleEnabled}
             >
               <Text style={styles.toggleBtnText}>
-                Haptics: {hapticsEnabled ? 'ENABLED' : 'DISABLED'}
+                震动: {hapticsEnabled ? '已启用' : '已禁用'}
               </Text>
             </Pressable>
           </SectionCard>
@@ -395,15 +388,14 @@ export default function App(): React.JSX.Element {
 
           {/* useHaptics hook demo */}
           <SectionCard
-            title="useHaptics Hook"
+            title="useHaptics Hook 演示"
             cardBg={cardBg}
             titleColor={textSecondary}
           >
             <Text
               style={[styles.hint, { color: textSecondary, marginBottom: 10 }]}
             >
-              Shared hook instance with merged default options. Methods are
-              stable across renders.
+              useHaptics() 共享实例,方法引用跨渲染稳定,自动合并默认选项。
             </Text>
             <View style={styles.chipWrap}>
               {(['impactLight', 'impactMedium', 'impactHeavy'] as const).map(
@@ -426,7 +418,7 @@ export default function App(): React.JSX.Element {
 
           {/* Pattern presets */}
           <SectionCard
-            title="Pattern Presets"
+            title="模式预设"
             cardBg={cardBg}
             titleColor={textSecondary}
           >
@@ -450,8 +442,8 @@ export default function App(): React.JSX.Element {
 
           {/* AHAP files */}
           <SectionCard
-            title={`AHAP Files  ·  ${
-              Platform.OS === 'ios' ? 'iOS' : 'Android fallback'
+            title={`AHAP 文件  ·  ${
+              Platform.OS === 'ios' ? 'iOS' : 'Android 回退'
             }`}
             cardBg={cardBg}
             titleColor={textSecondary}
@@ -460,8 +452,8 @@ export default function App(): React.JSX.Element {
               style={[styles.hint, { color: textSecondary, marginBottom: 10 }]}
             >
               {Platform.OS === 'ios'
-                ? 'Plays .ahap files from ios/HapticFeedbackExample/haptics/.'
-                : 'Android: pattern fallbacks used instead of .ahap files.'}
+                ? '播放打包在 app 内 haptics/ 目录里的 .ahap 文件。'
+                : 'Android:以回退模式代替 .ahap 播放。'}
             </Text>
             <View style={styles.chipWrap}>
               {AHAP_FILES.map(({ name, file, fallback, description }) => (
@@ -483,7 +475,7 @@ export default function App(): React.JSX.Element {
 
           {/* Pattern playground */}
           <SectionCard
-            title="Pattern Playground"
+            title="模式试验场"
             cardBg={cardBg}
             titleColor={textSecondary}
           >
@@ -499,13 +491,12 @@ export default function App(): React.JSX.Element {
                 <Text
                   style={[styles.patternPlaceholder, { color: textSecondary }]}
                 >
-                  tap keys below to build a pattern…
+                  点下方按键编一段节奏…
                 </Text>
               )}
               {patternStr.length > 0 && (
                 <Text style={[styles.eventCount, { color: textSecondary }]}>
-                  {patternEvents.length} event
-                  {patternEvents.length !== 1 ? 's' : ''}
+                  {patternEvents.length} 个事件
                 </Text>
               )}
             </View>
@@ -566,7 +557,7 @@ export default function App(): React.JSX.Element {
                   onPress={clearPattern}
                 >
                   <Text style={[styles.keyMain, { color: '#ef4444' }]}>
-                    Clear
+                    清空
                   </Text>
                 </Pressable>
               </View>
@@ -587,13 +578,13 @@ export default function App(): React.JSX.Element {
                   !canPlay && styles.playBtnTextDisabled,
                 ]}
               >
-                ▶ Play Pattern
+                ▶ 播放
               </Text>
             </Pressable>
 
             {lastPlayed ? (
               <Text style={[styles.lastPlayed, { color: textSecondary }]}>
-                Last: {lastPlayed}
+                上次: {lastPlayed}
               </Text>
             ) : null}
           </SectionCard>

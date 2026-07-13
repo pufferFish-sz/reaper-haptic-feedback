@@ -52,7 +52,7 @@ const WATCH_INTERVAL_MS = 1000;
 
 type BenchReport = {
   source: string;
-  format: 'AHAP (seconds) → preview conversion' | 'HapticEvent[] (ms)' | null;
+  format: 'AHAP(秒)→ 预览转换' | 'HapticEvent[](毫秒)' | null;
   issues: AhapIssue[];
   valid: boolean;
   events: HapticEvent[];
@@ -74,7 +74,7 @@ function analyze(text: string, source: string): BenchReport {
         {
           severity: 'error',
           path: '$',
-          message: `not valid JSON: ${(e as Error).message}`,
+          message: `JSON 无效: ${(e as Error).message}`,
         },
       ],
     };
@@ -84,7 +84,7 @@ function analyze(text: string, source: string): BenchReport {
     const result = validateHapticEvents(parsed);
     return {
       source,
-      format: 'HapticEvent[] (ms)',
+      format: 'HapticEvent[](毫秒)',
       valid: result.valid,
       issues: result.issues,
       events: result.events ?? [],
@@ -95,7 +95,7 @@ function analyze(text: string, source: string): BenchReport {
   const result = validateAhap(parsed);
   return {
     source,
-    format: 'AHAP (seconds) → preview conversion',
+    format: 'AHAP(秒)→ 预览转换',
     valid: result.valid,
     issues: result.issues,
     events: result.valid && result.ahap ? ahapToHapticEvents(result.ahap) : [],
@@ -201,7 +201,7 @@ export default function TestBench(): React.JSX.Element {
     async (silent: boolean) => {
       const target = urlRef.current.trim();
       if (!target) {
-        if (!silent) setFetchStatus('enter a URL first');
+        if (!silent) setFetchStatus('请先填写 URL');
         return;
       }
       AsyncStorage.setItem(URL_STORAGE_KEY, target).catch(() => {});
@@ -210,7 +210,7 @@ export default function TestBench(): React.JSX.Element {
         const sep = target.includes('?') ? '&' : '?';
         const res = await fetch(`${target}${sep}_=${Date.now()}`);
         if (!res.ok) {
-          setFetchStatus(`HTTP ${res.status} from ${target}`);
+          setFetchStatus(`HTTP ${res.status} — ${target}`);
           return;
         }
         const text = await res.text();
@@ -220,12 +220,12 @@ export default function TestBench(): React.JSX.Element {
           const result = runText(text, target.split('/').pop() ?? target, true);
           setFetchStatus(
             `${new Date().toLocaleTimeString()} — ${
-              changed ? 'file changed, ' : ''
-            }${result.valid ? 'played' : 'NOT played (errors)'}`,
+              changed ? '文件已更新,' : ''
+            }${result.valid ? '已播放' : '未播放(有错误)'}`,
           );
         }
       } catch (e) {
-        setFetchStatus(`fetch failed: ${(e as Error).message}`);
+        setFetchStatus(`拉取失败: ${(e as Error).message}`);
       }
     },
     [runText],
@@ -242,9 +242,9 @@ export default function TestBench(): React.JSX.Element {
 
   const summary =
     report && report.events.length > 0
-      ? `${report.events.length} events · ` +
-        `${report.events.filter(e => e.type !== 'continuous').length} transient · ` +
-        `${report.events.filter(e => e.type === 'continuous').length} continuous · ` +
+      ? `共 ${report.events.length} 个事件 · ` +
+        `${report.events.filter(e => e.type !== 'continuous').length} 瞬态 · ` +
+        `${report.events.filter(e => e.type === 'continuous').length} 持续 · ` +
         `${Math.round(patternLengthMs(report.events))} ms`
       : null;
 
@@ -258,13 +258,12 @@ export default function TestBench(): React.JSX.Element {
       {/* Live URL */}
       <View style={[styles.card, { backgroundColor: cardBg }]}>
         <Text style={[styles.cardTitle, { color: textSecondary }]}>
-          Live URL · no-rebuild reload
+          实时 URL · 免重打包热加载
         </Text>
         <Text style={[styles.hint, { color: textSecondary }]}>
-          Serve your REAPER export folder on the authoring machine:{' '}
-          <Text style={styles.mono}>python -m http.server 8765</Text>, then use{' '}
-          <Text style={styles.mono}>http://&lt;pc-ip&gt;:8765/file.ahap</Text>.
-          Watch polls every second and replays whenever the file changes.
+          在 REAPER 面板点『启动手机服务器』,把面板显示的 URL 填到下面 (形如{' '}
+          <Text style={styles.mono}>http://电脑IP:8765/preview.ahap</Text>)。
+          开启监听后每秒检查一次,文件一变手机自动重放。
         </Text>
         <TextInput
           style={[
@@ -292,7 +291,7 @@ export default function TestBench(): React.JSX.Element {
             ]}
             onPress={() => fetchAndRun(false)}
           >
-            <Text style={styles.btnText}>Fetch & Play</Text>
+            <Text style={styles.btnText}>拉取并播放</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [
@@ -303,7 +302,7 @@ export default function TestBench(): React.JSX.Element {
             onPress={() => setWatching(w => !w)}
           >
             <Text style={styles.btnText}>
-              {watching ? 'Watching…' : 'Watch: off'}
+              {watching ? '监听中…' : '监听: 关'}
             </Text>
           </Pressable>
         </View>
@@ -317,11 +316,10 @@ export default function TestBench(): React.JSX.Element {
       {/* Paste JSON */}
       <View style={[styles.card, { backgroundColor: cardBg }]}>
         <Text style={[styles.cardTitle, { color: textSecondary }]}>
-          Paste JSON · AHAP or HapticEvent[]
+          粘贴 JSON · AHAP 或 HapticEvent[]
         </Text>
         <Text style={[styles.hint, { color: textSecondary }]}>
-          Auto-detected: object with Pattern = AHAP (seconds), array ={' '}
-          HapticEvent[] (milliseconds).
+          自动识别:带 Pattern 的对象 = AHAP(秒);数组 = HapticEvent[](毫秒)。
         </Text>
         <TextInput
           style={[
@@ -348,9 +346,9 @@ export default function TestBench(): React.JSX.Element {
               styles.btnNeutral,
               pressed && styles.pressed,
             ]}
-            onPress={() => runText(pasted, 'pasted JSON', false)}
+            onPress={() => runText(pasted, '粘贴的 JSON', false)}
           >
-            <Text style={styles.btnText}>Validate</Text>
+            <Text style={styles.btnText}>校验</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [
@@ -358,9 +356,9 @@ export default function TestBench(): React.JSX.Element {
               styles.btnPrimary,
               pressed && styles.pressed,
             ]}
-            onPress={() => runText(pasted, 'pasted JSON', true)}
+            onPress={() => runText(pasted, '粘贴的 JSON', true)}
           >
-            <Text style={styles.btnText}>Validate & Play</Text>
+            <Text style={styles.btnText}>校验并播放</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [
@@ -370,7 +368,7 @@ export default function TestBench(): React.JSX.Element {
             ]}
             onPress={() => setPasted('')}
           >
-            <Text style={styles.btnText}>Clear</Text>
+            <Text style={styles.btnText}>清空</Text>
           </Pressable>
         </View>
       </View>
@@ -379,7 +377,7 @@ export default function TestBench(): React.JSX.Element {
       {report && (
         <View style={[styles.card, { backgroundColor: cardBg }]}>
           <Text style={[styles.cardTitle, { color: textSecondary }]}>
-            Report · {report.source}
+            报告 · {report.source}
           </Text>
           <View style={styles.badgeRow}>
             <Text
@@ -388,7 +386,7 @@ export default function TestBench(): React.JSX.Element {
                 report.valid ? styles.badgeOk : styles.badgeFail,
               ]}
             >
-              {report.valid ? 'VALID' : 'INVALID'}
+              {report.valid ? '有效' : '无效'}
             </Text>
             {report.format && (
               <Text
@@ -422,7 +420,7 @@ export default function TestBench(): React.JSX.Element {
                       : styles.issueWarn,
                   ]}
                 >
-                  {issue.severity === 'error' ? 'ERR' : 'WARN'}
+                  {issue.severity === 'error' ? '错误' : '警告'}
                 </Text>
                 <View style={styles.issueBody}>
                   <Text style={[styles.issuePath, { color: textSecondary }]}>
@@ -436,7 +434,7 @@ export default function TestBench(): React.JSX.Element {
             ))
           ) : (
             <Text style={[styles.hint, { color: textSecondary }]}>
-              No issues found.
+              未发现问题。
             </Text>
           )}
 
@@ -452,7 +450,7 @@ export default function TestBench(): React.JSX.Element {
               disabled={report.events.length === 0}
               onPress={() => play(report.events)}
             >
-              <Text style={styles.btnText}>Replay</Text>
+              <Text style={styles.btnText}>重放</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [
@@ -462,12 +460,12 @@ export default function TestBench(): React.JSX.Element {
               ]}
               onPress={() => HapticFeedback.stop()}
             >
-              <Text style={styles.btnText}>Stop</Text>
+              <Text style={styles.btnText}>停止</Text>
             </Pressable>
           </View>
           {report.playedAt && (
             <Text style={[styles.status, { color: textSecondary }]}>
-              played at {report.playedAt}
+              播放于 {report.playedAt}
             </Text>
           )}
         </View>
@@ -476,16 +474,14 @@ export default function TestBench(): React.JSX.Element {
       {/* Fidelity note */}
       <View style={[styles.card, { backgroundColor: cardBg }]}>
         <Text style={[styles.cardTitle, { color: textSecondary }]}>
-          Preview fidelity
+          预览保真度
         </Text>
         <Text style={[styles.hint, { color: textSecondary }]}>
-          This tab plays AHAP through a lossy PREVIEW path (AHAP → HapticEvent[]
-          → triggerPattern). Static transient/continuous events with intensity +
-          sharpness reproduce 1:1 — parameter curves, audio events and envelope
-          parameters are dropped (see warnings above). For bit-exact Core
-          Haptics playback, bundle the file and use the AHAP Files section of
-          the demo tab. Timeline: blue ticks = transients, orange blocks =
-          continuous; bar height = intensity, opacity = sharpness.
+          本页签用预览路径播放 AHAP(AHAP → HapticEvent[] → triggerPattern)。
+          只含静态强度/锐度的瞬态与持续事件可 1:1 还原;参数曲线、音频事件、
+          包络参数会被丢弃(见上方警告)。需要逐比特一致的 Core Haptics
+          回放时,把文件打进 app 包并使用『库演示』页签的 AHAP 文件区。
+          时间轴:蓝色细条 = 瞬态,橙色色块 = 持续;条高 = 强度,透明度 = 锐度。
         </Text>
       </View>
     </ScrollView>

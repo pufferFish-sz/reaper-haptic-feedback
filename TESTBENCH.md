@@ -180,6 +180,23 @@ Verify under Build Phases → Copy Bundle Resources that the folder is listed.
 Reminder: Core Haptics needs a **physical iPhone (iOS 13+)** — the iOS
 Simulator does not vibrate; `isSupported()` returns false there.
 
+### Packaging for designers: build Release
+
+Debug builds show the black "Connect to Metro to develop JavaScript"
+banner (it waits for a dev server) and start slowly (interpreted JS, dev
+runtime). A **Release** build removes the banner and starts several times
+faster — use it for any build handed to designers:
+
+1. After `git pull`: `cd example && npm install && cd ios && pod install`
+   (dependencies were trimmed; pod install removes the unused ones).
+2. Xcode → Product → Scheme → Edit Scheme… → Run → Build Configuration →
+   **Release** → close, then run on the device as usual.
+3. The app is then fully standalone — no Metro, no LAN needed for launch
+   (the bench URL fetch of course still needs the LAN).
+
+Signing lifetime applies as usual: free Apple ID builds stop launching
+after 7 days; a paid team certificate (or TestFlight) lasts much longer.
+
 ## 4. Android fallback
 
 The same bench tab runs on Android unchanged: both AHAP (converted) and
