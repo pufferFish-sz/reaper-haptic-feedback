@@ -88,7 +88,7 @@ end
 
 local function act_insert()
   core.insert_transient()
-  status_line = "已在光标处插入 25ms 瞬态。拖右边缘拉长(≥150ms 变持续),音量把手=强度"
+  status_line = "已在光标处插入 25ms 瞬态。拖右边缘拉长(≥45ms 变持续),音量把手=强度"
 end
 
 local function act_server()
@@ -128,6 +128,9 @@ local function draw_events_list(x, y, w, h)
     return
   end
 
+  -- keep item colors in sync with their exported type (blue/orange)
+  core.apply_type_colors(track)
+
   local events = core.collect_events(track, "auto")
   if #events == 0 then
     draw_text(x + px(12), y + px(10), "(暂无事件:点『插入瞬态』或按你绑的快捷键)", COL.dim, 16)
@@ -138,7 +141,20 @@ local function draw_events_list(x, y, w, h)
   draw_text(x + px(100), y + px(8), "类型", COL.dim, 15)
   draw_text(x + px(240), y + px(8), "强度", COL.dim, 15)
   draw_text(x + px(320), y + px(8), "锐度", COL.dim, 15)
-  draw_text(x + px(400), y + px(8), "(点击行=选中)", COL.dim, 15)
+
+  -- live readout: while dragging the volume handle of a selected item the
+  -- numbers update every frame — this is the 0-1 intensity meter
+  local sel
+  for _, e in ipairs(events) do
+    if reaper.IsMediaItemSelected(e.item) then sel = e break end
+  end
+  if sel then
+    draw_text(x + px(390), y + px(8),
+      string.format("选中 强度%.2f 锐度%.2f", sel.intensity, sel.sharpness),
+      COL.ok, 15)
+  else
+    draw_text(x + px(390), y + px(8), "(点击行=选中)", COL.dim, 15)
+  end
 
   local row_h = px(28)
   local list_y = y + px(34)
@@ -181,7 +197,7 @@ local function draw_events_list(x, y, w, h)
   end
 
   if #events > visible then
-    draw_text(x + w - px(100), y + px(8),
+    draw_text(x + w - px(110), y + h - px(24),
       string.format("%d/%d ↕滚轮", math.min(scroll + visible, #events), #events),
       COL.dim, 15)
   end
@@ -197,7 +213,7 @@ local function draw()
   -- title + guide
   draw_text(margin, px(12), "ReaperHaptics 震动编辑", COL.text, 22)
   draw_text(margin, px(44),
-    "音量把手=强度 · item 备注写 s=0.3 调锐度 · 拖长 ≥150ms 变持续震动",
+    "音量把手=强度 · item 备注写 s=0.3 调锐度 · 拖长 ≥45ms 变持续震动",
     COL.dim, 15)
 
   -- buttons: two rows of three columns

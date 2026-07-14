@@ -7,7 +7,7 @@ ReaperHaptics_Export.lua and ReaperHaptics_InsertTransient.lua.
 local M = {}
 
 M.TRACK_NAME = "HAPTICS"
-M.TRANSIENT_MAX_LEN = 0.15 -- s, shorter items become transients
+M.TRANSIENT_MAX_LEN = 0.045 -- s, shorter items become transients
 M.DEFAULT_INSERT_LEN = 0.025 -- s, length of newly inserted transient items
 -- Empirical floor from device testing: ~23 ms gaps are still perceivable,
 -- so only warn below 20 ms. (Apple's 100 ms guidance is conservative.)
@@ -32,6 +32,11 @@ local function file_exists(path)
 end
 
 local function clamp01(v) return math.max(0, math.min(1, v)) end
+
+-- Item colors match the phone app's timeline: blue = transient,
+-- orange = continuous.
+local COLOR_TRANSIENT = reaper.ColorToNative(59, 130, 246) | 0x1000000
+local COLOR_CONTINUOUS = reaper.ColorToNative(249, 115, 22) | 0x1000000
 
 -- -------------------------------------------------------------------- track
 
@@ -85,6 +90,7 @@ function M.insert_transient()
     local src = reaper.PCM_Source_CreateFromFile(sine)
     reaper.SetMediaItemTake_Source(take, src)
   end
+  reaper.SetMediaItemInfo_Value(item, "I_CUSTOMCOLOR", COLOR_TRANSIENT)
 
   reaper.SelectAllMediaItems(0, false)
   reaper.SetMediaItemSelected(item, true)
@@ -203,6 +209,32 @@ function M.collect_events(track, scope)
   local scope_used = scope == "selected" and "selected"
     or (use_timesel and "timesel" or "all")
   return events, warnings, scope_used
+end
+
+--[[ Recolor every item on the HAPTICS track by its exported type
+(blue = transient, orange = continuous), so the classification is visible
+at a glance while editing. Cheap enough to call every panel frame:
+colors are only written when they actually change. ]]
+function M.apply_type_colors(track)
+  local changed = false
+  for i = 0, reaper.CountTrackMediaItems(track) - 1 do
+    local item = reaper.GetTrackMediaItem(track, i)
+    local len = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+    local label = label_of(item)
+    local forced = label:match("[tT][yY][pP][eE]%s*=%s*([tTcC])")
+    local is_transient
+    if forced then
+      is_transient = (forced:lower() == "t")
+    else
+      is_transient = len < M.TRANSIENT_MAX_LEN
+    end
+    local want = is_transient and COLOR_TRANSIENT or COLOR_CONTINUOUS
+    if reaper.GetMediaItemInfo_Value(item, "I_CUSTOMCOLOR") ~= want then
+      reaper.SetMediaItemInfo_Value(item, "I_CUSTOMCOLOR", want)
+      changed = true
+    end
+  end
+  if changed then reaper.UpdateArrange() end
 end
 
 -- -------------------------------------------------------------- serializers

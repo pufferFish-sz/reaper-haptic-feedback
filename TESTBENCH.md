@@ -49,8 +49,8 @@ in REAPER. Empty items work too, but they have no volume handle — write
 | Item property                    | Haptic meaning                          |
 | -------------------------------- | --------------------------------------- |
 | position                         | event start time                        |
-| length < 150 ms                  | `HapticTransient`                       |
-| length ≥ 150 ms                  | `HapticContinuous` (duration = length)  |
+| length < 45 ms                   | `HapticTransient`                       |
+| length ≥ 45 ms                   | `HapticContinuous` (duration = length)  |
 | item volume × take volume        | intensity 0–1 (1.0 = 0 dB, clamped)     |
 | `i=0.6` in take name / item note | intensity override (wins over volume)   |
 | `s=0.7` in take name / item note | sharpness override (default: intensity) |
