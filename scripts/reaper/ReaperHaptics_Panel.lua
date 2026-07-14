@@ -214,28 +214,65 @@ local function draw()
   end
 
   -- connection info card
+  if ips == nil then ips = core.get_local_ips() end
+  local preferred = reaper.GetExtState(EXT_SECTION, "preferred_ip")
+  local preferred_ok = false
+  for _, ip in ipairs(ips) do
+    if ip == preferred then preferred_ok = true end
+  end
+  -- single adapter: no choice to make
+  if #ips == 1 then
+    preferred, preferred_ok = ips[1], true
+  end
+
   local info_y = by2 + bh + gap + px(4)
-  local info_h = px(76)
+  local row_step = px(22)
+  local info_rows = preferred_ok and 3 or (#ips > 0 and (#ips + 2) or 2)
+  local info_h = px(16) + row_step * info_rows
   set_col(COL.card)
   gfx.rect(margin, info_y, gfx.w - margin * 2, info_h, 1)
+
   local dir = core.get_export_dir_raw()
-  draw_text(margin + px(12), info_y + px(8), "导出文件夹: " ..
+  local iy = info_y + px(8)
+  draw_text(margin + px(12), iy, "导出文件夹: " ..
     (dir ~= "" and dir or "(未设置,导出/启动服务器时会询问)"),
     dir ~= "" and COL.text or COL.dim, 16)
-  if ips == nil then ips = core.get_local_ips() end
-  if #ips > 0 then
-    local urls = {}
-    for i, ip in ipairs(ips) do
-      if i <= 2 then
-        urls[#urls + 1] = string.format("http://%s:%d/preview.ahap", ip, core.SERVER_PORT)
-      end
-    end
-    draw_text(margin + px(12), info_y + px(30), "手机 URL: " .. table.concat(urls, "  或  "), COL.ok, 16)
-    draw_text(margin + px(12), info_y + px(52),
-      "手机 app → REAPER Bench 页签 → 填上面 URL → 开 Watch(仅首次)", COL.dim, 15)
-  else
-    draw_text(margin + px(12), info_y + px(30),
+  iy = iy + row_step
+
+  if #ips == 0 then
+    draw_text(margin + px(12), iy,
       "手机 URL: 未检测到局域网 IP(点『启动手机服务器』后刷新)", COL.dim, 16)
+  elseif preferred_ok then
+    local url = string.format("http://%s:%d/preview.ahap", preferred, core.SERVER_PORT)
+    draw_text(margin + px(12), iy, "手机 URL: " .. url, COL.ok, 16)
+    if #ips > 1 and hit(margin, iy - px(2), gfx.w - margin * 2, row_step)
+      and clicked_this_frame then
+      reaper.SetExtState(EXT_SECTION, "preferred_ip", "", true)
+      status_line = "已清除网卡选择,请重新点选手机所在网段的 URL"
+    end
+    iy = iy + row_step
+    draw_text(margin + px(12), iy,
+      "手机 app → REAPER 调试台 → 填上面 URL → 开监听(仅首次)" ..
+        (#ips > 1 and ";点 URL 行可重选网卡" or ""),
+      COL.dim, 15)
+  else
+    draw_text(margin + px(12), iy,
+      "检测到多块网卡,点击手机所在网段的那行(选一次记住):", COL.warn, 15)
+    iy = iy + row_step
+    for _, ip in ipairs(ips) do
+      local url = string.format("http://%s:%d/preview.ahap", ip, core.SERVER_PORT)
+      local row_hover = hit(margin, iy - px(2), gfx.w - margin * 2, row_step)
+      if row_hover then
+        set_col(COL.row_sel)
+        gfx.rect(margin + px(4), iy - px(2), gfx.w - margin * 2 - px(8), row_step, 1)
+      end
+      draw_text(margin + px(12), iy, "→ " .. url, COL.accent_hover, 16)
+      if row_hover and clicked_this_frame then
+        reaper.SetExtState(EXT_SECTION, "preferred_ip", ip, true)
+        status_line = "已选定 " .. ip .. ",以后只显示这一个 URL"
+      end
+      iy = iy + row_step
+    end
   end
 
   -- events list
