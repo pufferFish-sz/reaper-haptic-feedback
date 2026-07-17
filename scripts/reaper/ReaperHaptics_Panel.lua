@@ -29,6 +29,8 @@ local scroll = 0
 local mouse_was_down = false
 local clicked_this_frame = false
 local scale = 1
+-- double-click tracking for the sharpness cell
+local dbl_item, dbl_time = nil, 0
 
 -- ---------------------------------------------------------------- gfx utils
 
@@ -181,11 +183,37 @@ local function draw_events_list(x, y, w, h)
       gfx.rect(x + px(4), ry - px(2), w - px(8), row_h - px(2), 1)
     end
 
-    if hit(x + px(4), ry - px(2), w - px(8), row_h - px(2)) and clicked_this_frame then
+    -- sharpness cell: double-click opens an edit dialog (writes s= back
+    -- into the take name / item note)
+    local did_edit = false
+    if hit(x + px(310), ry - px(2), px(74), row_h - px(2)) and clicked_this_frame then
+      local now = reaper.time_precise()
+      if dbl_item == e.item and (now - dbl_time) < 0.45 then
+        dbl_item = nil
+        local ok, csv = reaper.GetUserInputs("ReaperHaptics: 修改锐度", 1,
+          "锐度 (0-1):", string.format("%.2f", e.sharpness))
+        if ok then
+          local v = tonumber(csv)
+          if v then
+            v = core.set_sharpness(e.item, v)
+            status_line = string.format("锐度已改为 %.2f(已写入 s= 标记)", v)
+          else
+            status_line = "输入无效,锐度未修改"
+          end
+        end
+        did_edit = true
+      else
+        dbl_item, dbl_time = e.item, now
+      end
+    end
+
+    if not did_edit
+      and hit(x + px(4), ry - px(2), w - px(8), row_h - px(2))
+      and clicked_this_frame then
       reaper.SelectAllMediaItems(0, false)
       reaper.SetMediaItemSelected(e.item, true)
       reaper.UpdateArrange()
-      status_line = string.format("已选中 %.3fs 的事件,点『试发送选中』单发到手机", e.pos)
+      status_line = string.format("已选中 %.3fs 的事件;双击锐度数值可修改", e.pos)
     end
 
     local type_label = e.transient and "瞬态"
@@ -193,7 +221,7 @@ local function draw_events_list(x, y, w, h)
     draw_text(x + px(12), ry, string.format("%.3fs", e.time), COL.text, 16)
     draw_text(x + px(100), ry, type_label, e.transient and COL.accent_hover or COL.warn, 16)
     draw_text(x + px(240), ry, string.format("%.2f", e.intensity), COL.text, 16)
-    draw_text(x + px(320), ry, string.format("%.2f", e.sharpness), COL.text, 16)
+    draw_text(x + px(320), ry, string.format("%.2f", e.sharpness), COL.accent_hover, 16)
   end
 
   if #events > visible then
@@ -213,7 +241,7 @@ local function draw()
   -- title + guide
   draw_text(margin, px(12), "ReaperHaptics 震动编辑", COL.text, 22)
   draw_text(margin, px(44),
-    "音量把手=强度 · item 备注写 s=0.3 调锐度 · 拖长 ≥45ms 变持续震动",
+    "音量把手=强度 · 双击列表中的锐度值可修改 · 拖长 ≥45ms 变持续震动",
     COL.dim, 15)
 
   -- buttons: two rows of three columns

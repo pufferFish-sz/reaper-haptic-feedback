@@ -284,6 +284,35 @@ function M.to_haptic_events_json(events)
   return "[\n" .. table.concat(parts, ",\n") .. "\n]\n"
 end
 
+--[[ Write a sharpness override ("s=0.45") into the item's take name, or
+into the item note for empty items — replacing an existing s= token if
+present, appending otherwise. Returns the clamped value. ]]
+function M.set_sharpness(item, value)
+  value = clamp01(value)
+  local token = "s=" .. fnum(value)
+  local take = reaper.GetActiveTake(item)
+  local label
+  if take then
+    label = reaper.GetTakeName(take) or ""
+  else
+    local _, notes = reaper.GetSetMediaItemInfo_String(item, "P_NOTES", "", false)
+    label = notes or ""
+  end
+  local new_label, n = label:gsub("[sS]%s*=%s*[%d%.]+", token, 1)
+  if n == 0 then
+    new_label = label == "" and token or (label .. " " .. token)
+  end
+  reaper.Undo_BeginBlock()
+  if take then
+    reaper.GetSetMediaItemTakeInfo_String(take, "P_NAME", new_label, true)
+  else
+    reaper.GetSetMediaItemInfo_String(item, "P_NOTES", new_label, true)
+  end
+  reaper.UpdateArrange()
+  reaper.Undo_EndBlock("修改锐度", -1)
+  return value
+end
+
 -- ------------------------------------------------------------- export paths
 
 function M.get_export_dir_raw()
