@@ -358,39 +358,20 @@ function M.get_export_dir_raw()
   return reaper.GetExtState(EXT_SECTION, EXT_KEY_DIR)
 end
 
-function M.get_export_name_raw()
-  local name = reaper.GetExtState(EXT_SECTION, EXT_KEY_NAME)
-  if name == "" then name = "preview" end
-  return name
-end
-
-local function sanitize_name(name)
+local function sanitize_name(name, fallback)
   name = (name or ""):gsub("%.ahap%s*$", "")
   name = name:gsub('[<>:"/\\|%?%*]', ""):gsub("^%s+", ""):gsub("%s+$", "")
-  if name == "" then name = "preview" end
+  if name == "" then name = fallback or "preview" end
   return name
 end
 
---[[ Folder + filename confirm dialog for full exports. Both values are
-prefilled with the remembered choice and persisted on OK.
-Returns dir, name — or nil when cancelled. ]]
-function M.confirm_export_target()
-  local dir = M.get_export_dir_raw()
-  if dir == "" then dir = reaper.GetProjectPath("") end
-  local name = M.get_export_name_raw()
-  local ok, csv = reaper.GetUserInputs(
-    "ReaperHaptics: 确认导出", 2,
-    "导出文件夹:,文件名(.ahap):,extrawidth=260", dir .. "," .. name)
-  if not ok then return nil end
-  -- split on the LAST comma: the folder may itself contain commas
-  local d, n = csv:match("^(.*),([^,]*)$")
-  if not d then return nil end
-  d = d:gsub('^[%s"]+', ""):gsub('[%s"]+$', ""):gsub("[\\/]+$", "")
-  if d == "" then return nil end
-  n = sanitize_name(n)
-  reaper.SetExtState(EXT_SECTION, EXT_KEY_DIR, d, true)
-  reaper.SetExtState(EXT_SECTION, EXT_KEY_NAME, n, true)
-  return d, n
+local function name_key(track_name) return "export_name_" .. track_name end
+
+-- Per-track remembered export filename; defaults to the track name.
+function M.get_track_export_name(track_name)
+  local name = reaper.GetExtState(EXT_SECTION, name_key(track_name))
+  if name == "" then name = track_name:lower() end
+  return name
 end
 
 function M.confirm_export_dir()
@@ -428,94 +409,181 @@ function M.write_files(dir, events, name)
   return true, ahap_path
 end
 
---[[ Full export flow. scope: "auto" | "selected".
-confirm_dir: true -> always pop the folder+filename dialog; false -> use
-the remembered folder silently (dialog only if none is remembered yet).
-tracks: array from find_tracks() — which haptics tracks to merge; nil
-means all of them. "selected" scope is constrained to a single track:
-if the selection spans several, only the earliest item's track is sent.
-Returns a one-line status string for UI display (nil when cancelled),
-plus the warnings table. ]]
-function M.export(scope, confirm_dir, tracks)
-  tracks = tracks or M.find_tracks()
-  if #tracks == 0 then
-    reaper.MB('未找到震动轨道(HAPTICS 或 HAPTICS_1、HAPTICS_2…)。\n\n' ..
-      "请先点『新增震动轨』。", "ReaperHaptics", 0)
-    return nil
-  end
-
-  local events, warnings, scope_used = M.collect_events(tracks, scope)
-  if #events == 0 then
-    local reason = scope == "selected" and "没有选中的震动轨 item。"
-      or (scope_used == "timesel" and "时间选区内没有起点落在选区里的震动轨 item。"
-          or "所选震动轨上没有任何 item。")
-    reaper.MB(reason, "ReaperHaptics", 0)
-    return nil
-  end
-
-  -- quick send: one track at a time — keep the earliest item's track
-  local sent_track_note = ""
-  if scope == "selected" then
-    local first_num = events[1].track_num
-    local filtered, dropped = {}, 0
-    for _, e in ipairs(events) do
-      if e.track_num == first_num then
-        filtered[#filtered + 1] = e
-      else
-        dropped = dropped + 1
-      end
-    end
-    if dropped > 0 then
-      events = filtered
-      -- times are already rebased to the first (kept) event
-      sent_track_note = string.format(
-        "(选中跨多轨,仅发送 HAPTICS_%d,忽略其他轨 %d 个 item)", first_num, dropped)
-    end
-  end
-
-  -- Quick sends (confirm_dir=false) always write preview.* silently — the
-  -- phone's watch mode follows preview.ahap. Full exports confirm folder +
-  -- filename; a custom name also refreshes preview.* so the phone replays.
-  local dir, name
-  if confirm_dir or M.get_export_dir_raw() == "" then
-    dir, name = M.confirm_export_target()
-    if not dir then return nil end
-  else
-    dir, name = M.get_export_dir_raw(), "preview"
-  end
-
-  local ok, err_or_path = M.write_files(dir, events, name)
-  if not ok then
-    reaper.MB("无法写入导出文件:\n" .. err_or_path ..
-      "\n\n请重新导出并换一个文件夹。", "ReaperHaptics", 0)
-    return nil
-  end
-  if name ~= "preview" then
-    M.write_files(dir, events, "preview")
-  end
-
+local function stats(events)
   local n_trans, n_cont, last_end = 0, 0, 0
   for _, e in ipairs(events) do
     if e.transient then n_trans = n_trans + 1 else n_cont = n_cont + 1 end
     local e_end = e.time + (e.transient and 0 or e.len)
     if e_end > last_end then last_end = e_end end
   end
+  return n_trans, n_cont, last_end
+end
 
-  local scope_label = scope_used == "selected" and "选中"
-    or (scope_used == "timesel" and "时间选区" or "全部")
-  local status = string.format("已导出[%s] %s.ahap:%d 个事件(瞬态 %d,持续 %d),总长 %.0fms",
-    scope_label, name, #events, n_trans, n_cont, last_end * 1000)
-  if name ~= "preview" then
-    status = status .. ",已同步 preview.ahap"
+local function log_warnings(warnings)
+  for _, w in ipairs(warnings) do
+    reaper.ShowConsoleMsg("ReaperHaptics 警告: " .. w .. "\n")
   end
-  status = status .. sent_track_note
-  if #warnings > 0 then
-    status = status .. string.format(",警告 %d 条(见控制台)", #warnings)
-    for _, w in ipairs(warnings) do
-      reaper.ShowConsoleMsg("ReaperHaptics 警告: " .. w .. "\n")
+end
+
+-- Quick send: selected items only, one track at a time, always preview.*.
+local function export_selected(tracks)
+  local events, warnings = M.collect_events(tracks, "selected")
+  if #events == 0 then
+    reaper.MB("没有选中的震动轨 item。", "ReaperHaptics", 0)
+    return nil
+  end
+
+  local note = ""
+  local first_num = events[1].track_num
+  local filtered, dropped = {}, 0
+  for _, e in ipairs(events) do
+    if e.track_num == first_num then
+      filtered[#filtered + 1] = e
+    else
+      dropped = dropped + 1
     end
   end
+  if dropped > 0 then
+    -- times are already rebased to the first (kept) event
+    events = filtered
+    note = string.format("(选中跨多轨,仅发送 HAPTICS_%d,忽略 %d 个 item)",
+      first_num, dropped)
+  end
+
+  local dir = M.get_export_dir_raw()
+  if dir == "" then
+    dir = M.confirm_export_dir()
+    if not dir then return nil end
+  end
+  local ok, err = M.write_files(dir, events, "preview")
+  if not ok then
+    reaper.MB("无法写入导出文件:\n" .. err ..
+      "\n\n请重新导出并换一个文件夹。", "ReaperHaptics", 0)
+    return nil
+  end
+
+  local n_trans, n_cont, last_end = stats(events)
+  local status = string.format(
+    "已发送[选中] preview.ahap:%d 个事件(瞬态 %d,持续 %d),总长 %.0fms%s",
+    #events, n_trans, n_cont, last_end * 1000, note)
+  if #warnings > 0 then
+    status = status .. string.format(",警告 %d 条(见控制台)", #warnings)
+    log_warnings(warnings)
+  end
   return status, warnings
+end
+
+-- Full export: ONE FILE PER TRACK, no merging. A single dialog asks for
+-- the folder plus a filename per non-empty track (remembered per track).
+local function export_per_track(tracks)
+  local jobs, all_warnings = {}, {}
+  for _, t in ipairs(tracks) do
+    local events, warnings = M.collect_events({ t }, "auto")
+    for _, w in ipairs(warnings) do
+      all_warnings[#all_warnings + 1] = t.name .. " " .. w
+    end
+    if #events > 0 then
+      jobs[#jobs + 1] = { entry = t, events = events }
+    end
+  end
+  if #jobs == 0 then
+    reaper.MB("勾选的震动轨上没有可导出的 item(注意时间选区)。",
+      "ReaperHaptics", 0)
+    return nil
+  end
+
+  local dir = M.get_export_dir_raw()
+  if dir == "" then dir = reaper.GetProjectPath("") end
+  local captions, defaults = { "导出文件夹:" }, { dir }
+  for _, job in ipairs(jobs) do
+    captions[#captions + 1] = job.entry.name .. " 文件名:"
+    defaults[#defaults + 1] = M.get_track_export_name(job.entry.name)
+  end
+  local ok, csv = reaper.GetUserInputs(
+    "ReaperHaptics: 确认导出(每轨一个文件)", #captions,
+    table.concat(captions, ",") .. ",extrawidth=260",
+    table.concat(defaults, ","))
+  if not ok then return nil end
+
+  -- the folder may contain commas: the LAST #jobs fields are the names
+  local parts = {}
+  for part in (csv .. ","):gmatch("(.-),") do parts[#parts + 1] = part end
+  if #parts < #jobs + 1 then return nil end
+  local names = {}
+  for i = #parts - #jobs + 1, #parts do names[#names + 1] = parts[i] end
+  dir = table.concat(parts, ",", 1, #parts - #jobs)
+  dir = dir:gsub('^[%s"]+', ""):gsub('[%s"]+$', ""):gsub("[\\/]+$", "")
+  if dir == "" then return nil end
+  reaper.SetExtState(EXT_SECTION, EXT_KEY_DIR, dir, true)
+
+  -- sanitize + duplicate check before writing anything
+  local seen, written = {}, {}
+  for i, job in ipairs(jobs) do
+    local name = sanitize_name(names[i], job.entry.name:lower())
+    if seen[name] then
+      reaper.MB("文件名重复: " .. name .. ".ahap\n\n每条轨需要不同的文件名。",
+        "ReaperHaptics", 0)
+      return nil
+    end
+    seen[name] = true
+    job.filename = name
+  end
+
+  for _, job in ipairs(jobs) do
+    reaper.SetExtState(EXT_SECTION, name_key(job.entry.name), job.filename, true)
+    local ok2, err = M.write_files(dir, job.events, job.filename)
+    if not ok2 then
+      reaper.MB("无法写入 " .. job.filename .. ".ahap:\n" .. err,
+        "ReaperHaptics", 0)
+      return nil
+    end
+    written[#written + 1] = { name = job.filename, count = #job.events }
+  end
+
+  -- keep the phone loop alive when exactly one file was exported
+  local preview_note = ""
+  if #written == 1 then
+    if written[1].name ~= "preview" then
+      M.write_files(dir, jobs[1].events, "preview")
+      preview_note = ",已同步 preview.ahap"
+    end
+  else
+    preview_note = ";多文件导出不更新 preview,单层试听请用④"
+  end
+
+  local descs = {}
+  for _, wr in ipairs(written) do
+    descs[#descs + 1] = string.format("%s.ahap(%d 事件)", wr.name, wr.count)
+  end
+  local status = string.format("已导出 %d 个文件: %s%s",
+    #written, table.concat(descs, "、"), preview_note)
+  if #all_warnings > 0 then
+    status = status .. string.format(",警告 %d 条(见控制台)", #all_warnings)
+    log_warnings(all_warnings)
+  end
+  return status, all_warnings
+end
+
+--[[ Export flow.
+scope "selected": quick send — selected items, single track (earliest
+  item's track wins), always written to preview.* silently.
+scope "auto": full export — one file per track in `tracks`, no merging;
+  one dialog collects the folder and a per-track filename (each
+  remembered). Exactly one exported file also refreshes preview.* so
+  the phone replays it; multi-file exports leave preview untouched.
+tracks: array from find_tracks(); nil = all haptics tracks.
+Returns a one-line status string (nil when cancelled) and warnings. ]]
+function M.export(scope, _confirm_dir, tracks)
+  tracks = tracks or M.find_tracks()
+  if #tracks == 0 then
+    reaper.MB("未找到震动轨道(HAPTICS_1、HAPTICS_2…)。\n\n请先点『新增震动轨』。",
+      "ReaperHaptics", 0)
+    return nil
+  end
+  if scope == "selected" then
+    return export_selected(tracks)
+  end
+  return export_per_track(tracks)
 end
 
 -- ------------------------------------------------------------------- server
