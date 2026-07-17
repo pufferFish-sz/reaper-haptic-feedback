@@ -2,14 +2,15 @@
 ReaperHaptics_Panel.lua — 震动编辑面板(设计师的唯一入口)。
 
 REAPER 原生 gfx 实现,零依赖(不需要 ReaImGui)。功能:
-  ① 启用震动编辑 — 建立/定位 HAPTICS 轨
-  ② 插入瞬态     — 在编辑光标处插入 25ms 正弦 item(拖长即变持续)
+  ① 新增震动轨   — 添加 HAPTICS_1、HAPTICS_2…(可多轨分层设计)
+  ② 插入瞬态     — 在编辑光标处插入 25ms 正弦 item(拖长即变持续),
+                   落在当前选中的震动轨上
   ③ 启动手机服务器 — 一键在导出文件夹启动 serve-haptics.bat,
                      面板里直接显示手机要填的 URL
-  ④ 试发送选中   — 只导出选中的 item,手机 Watch 秒回放(不弹路径框)
-  ⑤ 导出到手机   — 导出时间选区/全部,导出前确认路径
-下方实时列出当前的震动事件,点击某一行 = 在工程里选中该 item,
-再点『试发送选中』即可单发到手机。
+  ④ 试发送选中   — 只导出选中的 item(单轨:跨轨时只发最早 item 的轨)
+  ⑤ 导出到手机   — 合并所有勾选轨的事件,导出前确认路径和文件名
+多轨时面板出现"导出轨道"勾选行;事件列表实时合并显示勾选轨,
+点击某一行 = 在工程里选中该 item,双击锐度值可修改。
 
 窗口可拉伸:放大时字体等比放大;缩小到基准尺寸(600x560)为止。
 建议:加载后把它拖到工具栏(右键工具栏 → 自定义)当常驻按钮。
@@ -19,11 +20,11 @@ local core = dofile(
   (debug.getinfo(1, "S").source:match("^@(.*[/\\])")) .. "ReaperHaptics_Core.lua")
 
 local EXT_SECTION = "ReaperHaptics"
-local BASE_W, BASE_H = 600, 560 -- 最小(基准)尺寸,缩小到此为止
+local BASE_W, BASE_H = 600, 600 -- 最小(基准)尺寸,缩小到此为止
 
 -- ------------------------------------------------------------------- state
 
-local status_line = "① 启用震动编辑 → ② 插入瞬态 → ③ 启动服务器 → 手机开 Watch"
+local status_line = "① 新增震动轨 → ② 插入瞬态 → ③ 启动服务器 → 手机开 Watch"
 local ips = nil -- lazy: fetched on first draw / server start
 local scroll = 0
 local mouse_was_down = false
@@ -31,6 +32,8 @@ local clicked_this_frame = false
 local scale = 1
 -- double-click tracking for the sharpness cell
 local dbl_item, dbl_time = nil, 0
+-- which haptics tracks are included in list/export, keyed by track name
+local track_sel = {}
 
 -- ---------------------------------------------------------------- gfx utils
 
@@ -81,11 +84,19 @@ end
 
 -- ------------------------------------------------------------------ actions
 
+local function checked_tracks()
+  local out = {}
+  for _, t in ipairs(core.find_tracks()) do
+    if track_sel[t.name] == nil then track_sel[t.name] = true end
+    if track_sel[t.name] then out[#out + 1] = t end
+  end
+  return out
+end
+
 local function act_enable()
-  local _, created = core.find_or_create_track()
+  local _, name = core.create_new_track()
   reaper.UpdateArrange()
-  status_line = created and "已创建 HAPTICS 轨,点『插入瞬态』开始(或给它绑个 T 键)"
-    or "HAPTICS 轨已存在,可以直接插入瞬态"
+  status_line = "已新增 " .. name .. " 轨;在轨道列表选中它后,插入瞬态会落到这条轨"
 end
 
 local function act_insert()
@@ -109,12 +120,18 @@ local function act_server()
 end
 
 local function act_export()
-  local status = core.export("auto", true)
+  local tracks = checked_tracks()
+  if #tracks == 0 then
+    status_line = "没有勾选任何震动轨,请先在下方轨道行勾选"
+    return
+  end
+  local status = core.export("auto", true, tracks)
   if status then status_line = status end
 end
 
 local function act_send_selected()
-  local status = core.export("selected", false)
+  -- selection decides; core keeps only the earliest item's track
+  local status = core.export("selected", false, core.find_tracks())
   if status then status_line = status .. " → 手机 Watch 将在 1 秒内回放" end
 end
 
@@ -124,23 +141,32 @@ local function draw_events_list(x, y, w, h)
   set_col(COL.card)
   gfx.rect(x, y, w, h, 1)
 
-  local track = core.find_track()
-  if not track then
-    draw_text(x + px(12), y + px(10), "(还没有 HAPTICS 轨,点上方『启用震动编辑』)", COL.dim, 16)
+  local all_tracks = core.find_tracks()
+  if #all_tracks == 0 then
+    draw_text(x + px(12), y + px(10), "(还没有震动轨,点上方『新增震动轨』)", COL.dim, 16)
     return
   end
 
   -- keep item colors in sync with their exported type (blue/orange)
-  core.apply_type_colors(track)
+  for _, t in ipairs(all_tracks) do
+    core.apply_type_colors(t.track)
+  end
 
-  local events = core.collect_events(track, "auto")
+  local tracks = checked_tracks()
+  if #tracks == 0 then
+    draw_text(x + px(12), y + px(10), "(没有勾选任何震动轨)", COL.dim, 16)
+    return
+  end
+
+  local events = core.collect_events(tracks, "auto")
   if #events == 0 then
     draw_text(x + px(12), y + px(10), "(暂无事件:点『插入瞬态』或按你绑的快捷键)", COL.dim, 16)
     return
   end
 
   draw_text(x + px(12), y + px(8), "时间", COL.dim, 15)
-  draw_text(x + px(100), y + px(8), "类型", COL.dim, 15)
+  draw_text(x + px(95), y + px(8), "轨", COL.dim, 15)
+  draw_text(x + px(135), y + px(8), "类型", COL.dim, 15)
   draw_text(x + px(240), y + px(8), "强度", COL.dim, 15)
   draw_text(x + px(320), y + px(8), "锐度", COL.dim, 15)
 
@@ -219,7 +245,8 @@ local function draw_events_list(x, y, w, h)
     local type_label = e.transient and "瞬态"
       or string.format("持续 %.0fms", e.len * 1000)
     draw_text(x + px(12), ry, string.format("%.3fs", e.time), COL.text, 16)
-    draw_text(x + px(100), ry, type_label, e.transient and COL.accent_hover or COL.warn, 16)
+    draw_text(x + px(95), ry, tostring(e.track_num), COL.dim, 16)
+    draw_text(x + px(135), ry, type_label, e.transient and COL.accent_hover or COL.warn, 16)
     draw_text(x + px(240), ry, string.format("%.2f", e.intensity), COL.text, 16)
     draw_text(x + px(320), ry, string.format("%.2f", e.sharpness), COL.accent_hover, 16)
   end
@@ -249,7 +276,7 @@ local function draw()
   local bw = math.floor((gfx.w - margin * 2 - gap * 2) / 3)
   local by1 = px(72)
   local by2 = by1 + bh + gap
-  if button(margin, by1, bw, bh, "① 启用震动编辑") then act_enable() end
+  if button(margin, by1, bw, bh, "① 新增震动轨") then act_enable() end
   if button(margin + bw + gap, by1, bw, bh, "② 插入瞬态 (光标处)") then act_insert() end
   if button(margin + (bw + gap) * 2, by1, bw, bh, "③ 启动手机服务器") then act_server() end
   if button(margin, by2, bw, bh, "④ 试发送选中") then act_send_selected() end
@@ -319,8 +346,40 @@ local function draw()
     end
   end
 
+  -- track chips: choose which haptics tracks are listed / merged on export
+  local all_tracks = core.find_tracks()
+  local chips_h = 0
+  if #all_tracks > 1 then
+    local chip_h = px(28)
+    chips_h = chip_h + gap
+    local cx = margin
+    local cy = info_y + info_h + gap
+    draw_text(cx, cy + px(4), "导出轨道:", COL.dim, 15)
+    cx = cx + px(84)
+    for _, t in ipairs(all_tracks) do
+      if track_sel[t.name] == nil then track_sel[t.name] = true end
+      local on = track_sel[t.name]
+      local label = (on and "✓ " or "○ ") .. t.name
+      gfx.setfont(1, "Microsoft YaHei", px(15))
+      local cw = gfx.measurestr(label) + px(20)
+      local hover = hit(cx, cy, cw, chip_h)
+      set_col(on and COL.accent or (hover and COL.btn_hover or COL.btn))
+      gfx.rect(cx, cy, cw, chip_h, 1)
+      set_col(COL.text)
+      gfx.setfont(1, "Microsoft YaHei", px(15))
+      gfx.x, gfx.y = cx + px(10), cy + (chip_h - gfx.texth) / 2
+      gfx.drawstr(label)
+      if hover and clicked_this_frame then
+        track_sel[t.name] = not on
+        status_line = (not on) and ("已勾选 " .. t.name)
+          or ("已取消 " .. t.name .. ";⑤导出将合并所有勾选轨的事件")
+      end
+      cx = cx + cw + px(8)
+    end
+  end
+
   -- events list
-  local list_y = info_y + info_h + gap
+  local list_y = info_y + info_h + gap + chips_h
   local status_h = px(36)
   draw_events_list(margin, list_y, gfx.w - margin * 2, gfx.h - list_y - status_h - gap)
 

@@ -39,31 +39,64 @@ local function clamp01(v) return math.max(0, math.min(1, v)) end
 local COLOR_TRANSIENT = reaper.ColorToNative(59, 130, 246) | 0x1000000
 local COLOR_CONTINUOUS = reaper.ColorToNative(249, 115, 22) | 0x1000000
 
--- -------------------------------------------------------------------- track
+-- ------------------------------------------------------------------- tracks
 
-function M.find_track()
+-- "HAPTICS" (legacy) and "HAPTICS_1", "HAPTICS_2", ... all count.
+local function is_haptics_name(name)
+  local upper = (name or ""):upper()
+  return upper == M.TRACK_NAME
+    or upper:match("^" .. M.TRACK_NAME .. "_%d+$") ~= nil
+end
+
+local function track_num(name)
+  return tonumber((name or ""):match("_(%d+)$")) or 1
+end
+
+--[[ All haptics tracks in project order, as { track=, name=, num= }.
+The legacy plain "HAPTICS" counts as number 1. ]]
+function M.find_tracks()
+  local out = {}
   for i = 0, reaper.CountTracks(0) - 1 do
     local track = reaper.GetTrack(0, i)
     local _, name = reaper.GetSetMediaTrackInfo_String(track, "P_NAME", "", false)
-    if name:upper() == M.TRACK_NAME then return track end
+    if is_haptics_name(name) then
+      out[#out + 1] = { track = track, name = name:upper(), num = track_num(name) }
+    end
   end
-  return nil
+  return out
 end
 
-function M.find_or_create_track()
-  local track = M.find_track()
-  if track then return track, false end
+-- Add a new HAPTICS_<n+1> track at the end of the project.
+function M.create_new_track()
+  local max_num = 0
+  for _, t in ipairs(M.find_tracks()) do
+    if t.num > max_num then max_num = t.num end
+  end
+  local name = string.format("%s_%d", M.TRACK_NAME, max_num + 1)
   reaper.InsertTrackAtIndex(reaper.CountTracks(0), true)
-  track = reaper.GetTrack(0, reaper.CountTracks(0) - 1)
-  reaper.GetSetMediaTrackInfo_String(track, "P_NAME", M.TRACK_NAME, true)
-  return track, true
+  local track = reaper.GetTrack(0, reaper.CountTracks(0) - 1)
+  reaper.GetSetMediaTrackInfo_String(track, "P_NAME", name, true)
+  return track, name
+end
+
+--[[ Where insert_transient puts new items: the currently selected track if
+it is a haptics track, else the first haptics track, else a new one. ]]
+function M.insert_target_track()
+  for i = 0, reaper.CountSelectedTracks(0) - 1 do
+    local track = reaper.GetSelectedTrack(0, i)
+    local _, name = reaper.GetSetMediaTrackInfo_String(track, "P_NAME", "", false)
+    if is_haptics_name(name) then return track end
+  end
+  local tracks = M.find_tracks()
+  if tracks[1] then return tracks[1].track end
+  return (M.create_new_track())
 end
 
 -- --------------------------------------------------------- insert transient
 
 function M.insert_transient()
   reaper.Undo_BeginBlock()
-  local track = M.find_or_create_track()
+  local track = M.insert_target_track()
 
   local pos
   if reaper.BR_GetMouseCursorContext then
@@ -116,72 +149,77 @@ local function volume_of(item)
   return vol
 end
 
---[[ Collect haptic events from the HAPTICS track.
+--[[ Collect haptic events from one or more haptics tracks (merged).
+tracks: array of { track=, name=, num= } entries as from find_tracks().
 scope: "auto"     — time selection if present, otherwise everything
        "selected" — only selected items (times rebased to the first one)
 Returns events, warnings, scope_used ("timesel"/"all"/"selected").
-Each event also carries .item (MediaItem*) for UI use. ]]
-function M.collect_events(track, scope)
+Each event also carries .item (MediaItem*) and .track_num for UI use. ]]
+function M.collect_events(tracks, scope)
   local warnings = {}
   local sel_start, sel_end = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
   local has_sel = sel_end > sel_start
   local use_timesel = (scope ~= "selected") and has_sel
 
   local events = {}
-  for i = 0, reaper.CountTrackMediaItems(track) - 1 do
-    local item = reaper.GetTrackMediaItem(track, i)
-    local pos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
-    local len = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+  for _, entry in ipairs(tracks) do
+    local track = entry.track
+    for i = 0, reaper.CountTrackMediaItems(track) - 1 do
+      local item = reaper.GetTrackMediaItem(track, i)
+      local pos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+      local len = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
 
-    local included
-    if scope == "selected" then
-      included = reaper.IsMediaItemSelected(item)
-    elseif use_timesel then
-      included = pos >= sel_start and pos < sel_end
-    else
-      included = true
-    end
-
-    if included then
-      local label = label_of(item)
-      local intensity
-      local i_override = label:match("[iI]%s*=%s*([%d%.]+)")
-      if i_override then
-        intensity = clamp01(tonumber(i_override) or 1)
+      local included
+      if scope == "selected" then
+        included = reaper.IsMediaItemSelected(item)
+      elseif use_timesel then
+        included = pos >= sel_start and pos < sel_end
       else
-        local vol = volume_of(item)
-        intensity = clamp01(vol)
-        if vol > 1.001 then
-          warnings[#warnings + 1] = string.format(
-            "item @%.3fs: 音量 %.2f 超过 0 dB,强度已钳制为 1.0", pos, vol)
+        included = true
+      end
+
+      if included then
+        local label = label_of(item)
+        local intensity
+        local i_override = label:match("[iI]%s*=%s*([%d%.]+)")
+        if i_override then
+          intensity = clamp01(tonumber(i_override) or 1)
+        else
+          local vol = volume_of(item)
+          intensity = clamp01(vol)
+          if vol > 1.001 then
+            warnings[#warnings + 1] = string.format(
+              "item @%.3fs: 音量 %.2f 超过 0 dB,强度已钳制为 1.0", pos, vol)
+          end
         end
+
+        local sharpness = intensity
+        local s_override = label:match("[sS]%s*=%s*([%d%.]+)")
+        if s_override then sharpness = clamp01(tonumber(s_override) or intensity) end
+
+        local forced = label:match("[tT][yY][pP][eE]%s*=%s*([tTcC])")
+        local is_transient
+        if forced then
+          is_transient = (forced:lower() == "t")
+        else
+          is_transient = len < M.TRANSIENT_MAX_LEN
+        end
+
+        if (not is_transient) and len > M.MAX_CONTINUOUS then
+          warnings[#warnings + 1] = string.format(
+            "item @%.3fs: 持续事件 %.1fs 超过 Core Haptics 的 30 秒上限", pos, len)
+        end
+
+        events[#events + 1] = {
+          item = item,
+          pos = pos,
+          len = len,
+          transient = is_transient,
+          intensity = intensity,
+          sharpness = sharpness,
+          track_num = entry.num,
+        }
       end
-
-      local sharpness = intensity
-      local s_override = label:match("[sS]%s*=%s*([%d%.]+)")
-      if s_override then sharpness = clamp01(tonumber(s_override) or intensity) end
-
-      local forced = label:match("[tT][yY][pP][eE]%s*=%s*([tTcC])")
-      local is_transient
-      if forced then
-        is_transient = (forced:lower() == "t")
-      else
-        is_transient = len < M.TRANSIENT_MAX_LEN
-      end
-
-      if (not is_transient) and len > M.MAX_CONTINUOUS then
-        warnings[#warnings + 1] = string.format(
-          "item @%.3fs: 持续事件 %.1fs 超过 Core Haptics 的 30 秒上限", pos, len)
-      end
-
-      events[#events + 1] = {
-        item = item,
-        pos = pos,
-        len = len,
-        transient = is_transient,
-        intensity = intensity,
-        sharpness = sharpness,
-      }
     end
   end
 
@@ -391,26 +429,48 @@ function M.write_files(dir, events, name)
 end
 
 --[[ Full export flow. scope: "auto" | "selected".
-confirm_dir: true -> always pop the folder dialog; false -> use the
-remembered folder silently (dialog only if none is remembered yet).
+confirm_dir: true -> always pop the folder+filename dialog; false -> use
+the remembered folder silently (dialog only if none is remembered yet).
+tracks: array from find_tracks() — which haptics tracks to merge; nil
+means all of them. "selected" scope is constrained to a single track:
+if the selection spans several, only the earliest item's track is sent.
 Returns a one-line status string for UI display (nil when cancelled),
 plus the warnings table. ]]
-function M.export(scope, confirm_dir)
-  local track = M.find_track()
-  if not track then
-    reaper.MB('未找到名为 "' .. M.TRACK_NAME .. '" 的轨道。\n\n' ..
-      "请先点『启用震动编辑』或新建一条名为 HAPTICS 的轨道。",
-      "ReaperHaptics", 0)
+function M.export(scope, confirm_dir, tracks)
+  tracks = tracks or M.find_tracks()
+  if #tracks == 0 then
+    reaper.MB('未找到震动轨道(HAPTICS 或 HAPTICS_1、HAPTICS_2…)。\n\n' ..
+      "请先点『新增震动轨』。", "ReaperHaptics", 0)
     return nil
   end
 
-  local events, warnings, scope_used = M.collect_events(track, scope)
+  local events, warnings, scope_used = M.collect_events(tracks, scope)
   if #events == 0 then
-    local reason = scope == "selected" and "没有选中的 HAPTICS 轨 item。"
-      or (scope_used == "timesel" and "时间选区内没有起点落在选区里的 HAPTICS 轨 item。"
-          or "HAPTICS 轨上没有任何 item。")
+    local reason = scope == "selected" and "没有选中的震动轨 item。"
+      or (scope_used == "timesel" and "时间选区内没有起点落在选区里的震动轨 item。"
+          or "所选震动轨上没有任何 item。")
     reaper.MB(reason, "ReaperHaptics", 0)
     return nil
+  end
+
+  -- quick send: one track at a time — keep the earliest item's track
+  local sent_track_note = ""
+  if scope == "selected" then
+    local first_num = events[1].track_num
+    local filtered, dropped = {}, 0
+    for _, e in ipairs(events) do
+      if e.track_num == first_num then
+        filtered[#filtered + 1] = e
+      else
+        dropped = dropped + 1
+      end
+    end
+    if dropped > 0 then
+      events = filtered
+      -- times are already rebased to the first (kept) event
+      sent_track_note = string.format(
+        "(选中跨多轨,仅发送 HAPTICS_%d,忽略其他轨 %d 个 item)", first_num, dropped)
+    end
   end
 
   -- Quick sends (confirm_dir=false) always write preview.* silently — the
@@ -448,6 +508,7 @@ function M.export(scope, confirm_dir)
   if name ~= "preview" then
     status = status .. ",已同步 preview.ahap"
   end
+  status = status .. sent_track_note
   if #warnings > 0 then
     status = status .. string.format(",警告 %d 条(见控制台)", #warnings)
     for _, w in ipairs(warnings) do
