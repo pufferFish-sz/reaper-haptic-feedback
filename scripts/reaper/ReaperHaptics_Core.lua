@@ -17,7 +17,6 @@ M.SERVER_PORT = 8765
 
 local EXT_SECTION = "ReaperHaptics"
 local EXT_KEY_DIR = "export_dir"
-local EXT_KEY_NAME = "export_name"
 
 -- ------------------------------------------------------------------ helpers
 
