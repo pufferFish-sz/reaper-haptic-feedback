@@ -17,6 +17,7 @@ M.SERVER_PORT = 8765
 
 local EXT_SECTION = "ReaperHaptics"
 local EXT_KEY_DIR = "export_dir"
+local EXT_KEY_NAME = "export_name"
 
 -- ------------------------------------------------------------------ helpers
 
@@ -319,6 +320,41 @@ function M.get_export_dir_raw()
   return reaper.GetExtState(EXT_SECTION, EXT_KEY_DIR)
 end
 
+function M.get_export_name_raw()
+  local name = reaper.GetExtState(EXT_SECTION, EXT_KEY_NAME)
+  if name == "" then name = "preview" end
+  return name
+end
+
+local function sanitize_name(name)
+  name = (name or ""):gsub("%.ahap%s*$", "")
+  name = name:gsub('[<>:"/\\|%?%*]', ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if name == "" then name = "preview" end
+  return name
+end
+
+--[[ Folder + filename confirm dialog for full exports. Both values are
+prefilled with the remembered choice and persisted on OK.
+Returns dir, name — or nil when cancelled. ]]
+function M.confirm_export_target()
+  local dir = M.get_export_dir_raw()
+  if dir == "" then dir = reaper.GetProjectPath("") end
+  local name = M.get_export_name_raw()
+  local ok, csv = reaper.GetUserInputs(
+    "ReaperHaptics: 确认导出", 2,
+    "导出文件夹:,文件名(.ahap):,extrawidth=260", dir .. "," .. name)
+  if not ok then return nil end
+  -- split on the LAST comma: the folder may itself contain commas
+  local d, n = csv:match("^(.*),([^,]*)$")
+  if not d then return nil end
+  d = d:gsub('^[%s"]+', ""):gsub('[%s"]+$', ""):gsub("[\\/]+$", "")
+  if d == "" then return nil end
+  n = sanitize_name(n)
+  reaper.SetExtState(EXT_SECTION, EXT_KEY_DIR, d, true)
+  reaper.SetExtState(EXT_SECTION, EXT_KEY_NAME, n, true)
+  return d, n
+end
+
 function M.confirm_export_dir()
   local current = M.get_export_dir_raw()
   if current == "" then current = reaper.GetProjectPath("") end
@@ -340,15 +376,16 @@ local function normalize_dir(dir)
   return dir
 end
 
--- Write preview.ahap + preview.events.json. Returns ok, err_or_path.
-function M.write_files(dir, events)
+-- Write <name>.ahap + <name>.events.json. Returns ok, err_or_path.
+function M.write_files(dir, events, name)
   dir = normalize_dir(dir)
-  local ahap_path = dir .. "preview.ahap"
+  name = name or "preview"
+  local ahap_path = dir .. name .. ".ahap"
   local f, err = io.open(ahap_path, "w")
   if not f then return false, tostring(err) end
   f:write(M.to_ahap(events))
   f:close()
-  local jf = io.open(dir .. "preview.events.json", "w")
+  local jf = io.open(dir .. name .. ".events.json", "w")
   if jf then jf:write(M.to_haptic_events_json(events)) jf:close() end
   return true, ahap_path
 end
@@ -376,19 +413,25 @@ function M.export(scope, confirm_dir)
     return nil
   end
 
-  local dir
+  -- Quick sends (confirm_dir=false) always write preview.* silently — the
+  -- phone's watch mode follows preview.ahap. Full exports confirm folder +
+  -- filename; a custom name also refreshes preview.* so the phone replays.
+  local dir, name
   if confirm_dir or M.get_export_dir_raw() == "" then
-    dir = M.confirm_export_dir()
+    dir, name = M.confirm_export_target()
     if not dir then return nil end
   else
-    dir = M.get_export_dir_raw()
+    dir, name = M.get_export_dir_raw(), "preview"
   end
 
-  local ok, err_or_path = M.write_files(dir, events)
+  local ok, err_or_path = M.write_files(dir, events, name)
   if not ok then
     reaper.MB("无法写入导出文件:\n" .. err_or_path ..
       "\n\n请重新导出并换一个文件夹。", "ReaperHaptics", 0)
     return nil
+  end
+  if name ~= "preview" then
+    M.write_files(dir, events, "preview")
   end
 
   local n_trans, n_cont, last_end = 0, 0, 0
@@ -400,8 +443,11 @@ function M.export(scope, confirm_dir)
 
   local scope_label = scope_used == "selected" and "选中"
     or (scope_used == "timesel" and "时间选区" or "全部")
-  local status = string.format("已导出[%s] %d 个事件(瞬态 %d,持续 %d),总长 %.0fms",
-    scope_label, #events, n_trans, n_cont, last_end * 1000)
+  local status = string.format("已导出[%s] %s.ahap:%d 个事件(瞬态 %d,持续 %d),总长 %.0fms",
+    scope_label, name, #events, n_trans, n_cont, last_end * 1000)
+  if name ~= "preview" then
+    status = status .. ",已同步 preview.ahap"
+  end
   if #warnings > 0 then
     status = status .. string.format(",警告 %d 条(见控制台)", #warnings)
     for _, w in ipairs(warnings) do
